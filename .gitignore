@@ -1,0 +1,14 @@
+node_modules/
+.next/
+next-env.d.ts
+*.tsbuildinfo
+dist/
+.swarmkit/
+.env*
+!.env.example
+*.pem
+*.key
+*.log
+.DS_Store
+*.[mM][dD]
+![rR][eE][aA][dD][mM][eE].[mM][dD]

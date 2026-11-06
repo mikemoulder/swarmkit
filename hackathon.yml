@@ -1,0 +1,8 @@
+repo:
+  layout: flat
+  commit_ops_files: true
+  ignore_markdown: false
+project:
+  name: SwarmKit
+  track: swarms
+  event_window: "2026-11-01 through 2026-11-14 UTC"
