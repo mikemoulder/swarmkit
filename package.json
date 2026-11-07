@@ -1,0 +1,12 @@
+{
+  "name": "swarmkit",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "engines": { "node": ">=22.18.0" },
+  "exports": "./src/swarm/index.ts",
+  "scripts": {
+    "demo": "node scripts/demo.ts",
+    "test": "node --test test/market.test.ts"
+  }
+}
