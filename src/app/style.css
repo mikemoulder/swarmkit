@@ -1,0 +1,68 @@
+@import url("https://fonts.googleapis.com/css2?family=Geist:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500&display=swap");
+
+:root {
+  color-scheme: dark;
+  --ground: #101411;
+  --panel: #171e18;
+  --edge: #344237;
+  --ink: #f3f7eb;
+  --muted: #b6c4b5;
+  --accent: #dcfa90;
+  --mono: "IBM Plex Mono", monospace;
+}
+* { box-sizing: border-box; }
+body { margin: 0; background: var(--ground); color: var(--ink); font: 16px Geist, system-ui, sans-serif; }
+main { width: min(1160px, calc(100% - 56px)); margin: auto; }
+header, .intro, .round-head { display: flex; justify-content: space-between; align-items: center; gap: 24px; }
+header { height: 76px; border-bottom: 1px solid var(--edge); }
+.brand { color: var(--ink); font-size: 23px; font-weight: 700; text-decoration: none; }
+.brand span { color: var(--accent); margin-right: 5px; }
+.mode, .eyebrow, label, dt, footer { font: 500 12px var(--mono); }
+.mode { color: var(--accent); border: 1px solid var(--edge); border-radius: 50px; padding: 7px 12px; }
+.intro { align-items: end; padding: 56px 0 34px; animation: enter .35s ease-out both; }
+@keyframes enter { from { opacity: 0; transform: translateY(7px); } to { opacity: 1; transform: none; } }
+.eyebrow { color: var(--accent); margin: 0 0 12px; }
+h1 { margin: 0; font-size: clamp(42px, 7vw, 83px); line-height: .99; letter-spacing: -.07em; }
+.lede { color: var(--muted); margin: 17px 0 0; }
+label { display: grid; gap: 8px; color: var(--muted); }
+select, button { font: inherit; color: inherit; }
+select { padding: 10px; border: 1px solid var(--edge); border-radius: 7px; background: var(--panel); }
+.market { border: 1px solid var(--edge); border-radius: 14px; background: var(--panel); overflow: hidden; }
+nav { display: grid; grid-template-columns: repeat(4, 1fr); border-bottom: 1px solid var(--edge); }
+button { cursor: pointer; transition: background .15s, transform .15s; }
+button:hover { transform: translateY(-1px); }
+button:active { transform: translateY(1px); }
+nav button { padding: 15px 8px; background: transparent; border: 0; border-bottom: 2px solid transparent; color: var(--muted); }
+nav button:hover, nav button[aria-current] { color: var(--accent); background: #202b1e; }
+nav button[aria-current] { border-bottom-color: var(--accent); }
+.round { padding: clamp(15px, 3vw, 32px); }
+h2 { margin: 0; font-size: clamp(24px, 4vw, 34px); letter-spacing: -.04em; }
+.round-head p { margin: 7px 0 0; color: var(--muted); }
+.action { flex-shrink: 0; background: var(--accent); border: 1px solid var(--accent); color: #142011; border-radius: 7px; padding: 10px 16px; font-weight: 700; }
+.metrics { display: grid; grid-template-columns: repeat(4, 1fr); border-block: 1px solid var(--edge); margin: 28px 0; }
+.metrics div { padding: 16px 10px; }
+dt { color: var(--muted); }
+dd { margin: 5px 0 0; font: 500 clamp(22px, 4vw, 35px) var(--mono); }
+small { font: 400 11px var(--mono); color: var(--muted); }
+.table-wrap { overflow-x: auto; }
+table { width: 100%; border-collapse: collapse; font-size: 14px; text-align: left; }
+caption { text-align: left; font-weight: 700; font-size: 16px; margin-bottom: 10px; }
+th, td { padding: 11px; border-bottom: 1px solid var(--edge); }
+thead th { font-size: 12px; color: var(--muted); }
+tbody th { white-space: nowrap; font: 400 12px var(--mono); }
+.winner { background: #273622; color: var(--accent); }
+.result { padding: 12px; border-left: 2px solid var(--accent); background: #202b1e; }
+details { margin-top: 18px; }
+summary { cursor: pointer; padding: 10px 0; }
+footer { padding: 25px 0; color: var(--muted); }
+:focus-visible { outline: 2px solid var(--accent); outline-offset: 3px; }
+nav button:focus-visible { outline-offset: -4px; }
+@media (max-width: 620px) {
+  main { width: calc(100% - 28px); }
+  .intro, .round-head { align-items: flex-start; flex-direction: column; }
+  .intro { padding: 38px 0 25px; }
+  .metrics { grid-template-columns: repeat(2, 1fr); }
+}
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after { animation: none !important; transition: none !important; }
+}
