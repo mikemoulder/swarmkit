@@ -2,6 +2,7 @@ export type RoundSpec = {
   id: string;
   resource: { label: string; unit: string; deliveryWindow: string };
   asset: string;
+  mechanismId?: string;
   buyers: readonly string[];
   sellers: readonly string[];
   demandCloses: number;
