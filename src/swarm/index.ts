@@ -11,3 +11,11 @@ export { simulateProcurement } from "./simulation.ts";
 export type { BuyerStrategy, SellerStrategy, SimulationOptions } from "./simulation.ts";
 export { createSettlementPlan, summarizeSettlement } from "./settlement.ts";
 export type { Payment, PaymentReceipt, SettlementPlan } from "./settlement.ts";
+export {
+  INTENTS_VERIFIER, nearIntentsExecutionCall, planNearSubaccounts,
+  prepareNearIntentsTransfers, readNearIntentsSalt, signNearIntentsTransfers,
+} from "./near.ts";
+export type { NearIntentSigningRequest } from "./near.ts";
+export { executeSettlement } from "./execute.ts";
+export type { SignedPayment, SettlementEntry, SettlementJournal, SettlementTransport } from "./execute.ts";
+export { NATIVE_TESTNET_NEAR, nearTestnetTransport } from "./near-testnet.ts";
