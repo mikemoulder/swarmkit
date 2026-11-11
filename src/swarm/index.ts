@@ -20,3 +20,7 @@ export { executeSettlement } from "./execute.ts";
 export type { SignedPayment, SettlementEntry, SettlementJournal, SettlementTransport } from "./execute.ts";
 export { NATIVE_TESTNET_NEAR, nearTestnetTransport } from "./near-testnet.ts";
 export { nearIntentsTransport } from "./near-intents-transport.ts";
+export { auditSettlement } from "./audit.ts";
+export type { ReceiptClaim } from "./audit.ts";
+export { authorizeWithSpendingPolicies, executeWithSpendingPolicies, spendingPolicyMessage } from "./spending-policy.ts";
+export type { SpendingPolicy } from "./spending-policy.ts";
