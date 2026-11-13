@@ -1,6 +1,10 @@
 {
-  "name": "swarmkit",
+  "name": "near-swarmkit",
   "version": "0.1.0",
+  "description": "TypeScript SDK for agent procurement, deterministic replay, and settlement on NEAR",
+  "repository": { "type": "git", "url": "git+https://github.com/mikemoulder/swarmkit.git" },
+  "homepage": "https://mikemoulder.github.io/swarmkit-site/",
+  "bugs": "https://github.com/mikemoulder/swarmkit/issues",
   "license": "MIT OR Apache-2.0",
   "private": true,
   "type": "module",

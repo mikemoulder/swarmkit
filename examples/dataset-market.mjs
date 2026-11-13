@@ -5,7 +5,7 @@ import { join } from "node:path";
 import { DatabaseSync } from "node:sqlite";
 import {
   openStoredRound, replayRound, resumeRound, settlementPlanFromTranscript, simulateProcurement, submitStoredRoundEvent,
-} from "swarmkit";
+} from "near-swarmkit";
 
 const capacityFirst = {
   id: "dataset-capacity-first-v1",

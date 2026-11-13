@@ -32,7 +32,7 @@ export async function authorizeWithSpendingPolicies(
   input: SettlementPlan,
   transportScope: string,
   approvals: readonly { policy: SpendingPolicy; signature: Uint8Array }[],
-  resolveBuyerKey: (buyerId: string) => Promise<CryptoKey | undefined>,
+  resolveBuyerKey: (buyerId: string) => Promise<Parameters<typeof globalThis.crypto.subtle.verify>[1] | undefined>,
   clock: () => number = Date.now,
 ) {
   const plan = structuredClone(input);

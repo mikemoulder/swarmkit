@@ -4,16 +4,21 @@ import { link, mkdir, open, readFile, unlink } from "node:fs/promises";
 import { join } from "node:path";
 import { Account, JsonRpcProvider, KeyPair, KeyPairSigner, actions, createTransaction } from "near-api-js";
 import { base58 } from "@scure/base";
-import { executeSettlement, nearTestnetTransport, NATIVE_TESTNET_NEAR, planNearSubaccounts, settlementPlanFromTranscript, simulateProcurement } from "swarmkit";
+import {
+  auditSettlement, cheapestCapacity, executeSettlement, nearTestnetTransport, NATIVE_TESTNET_NEAR,
+  planNearSubaccounts, settlementPlanFromTranscript, simulateProcurement,
+} from "near-swarmkit";
 
 if (!process.argv.includes("--faucet-testnet")) {
   throw new Error("Pass --faucet-testnet to create disposable accounts and send test tokens.");
 }
+const gpu = process.argv.includes("--gpu");
+const split = process.argv.includes("--split");
+if (gpu && split) throw new Error("Choose either --gpu or --split");
 const parentId = `swarmkit-${randomBytes(6).toString("hex")}.testnet`;
 const parentKey = KeyPair.fromRandom("ed25519");
-const gpu = process.argv.includes("--gpu");
-const buyerCount = gpu ? 20 : 2;
-const sellerCount = gpu ? 5 : 1;
+const buyerCount = gpu ? 20 : split ? 1 : 2;
+const sellerCount = gpu ? 5 : split ? 2 : 1;
 const labels = [
   ...Array.from({ length: buyerCount }, (_, index) => `buyer-${index + 1}`),
   ...Array.from({ length: sellerCount }, (_, index) => `seller-${index + 1}`),
@@ -43,7 +48,7 @@ const priceUnit = 10n ** 20n;
 const { transcript } = await simulateProcurement({
   seed: 2026,
   spec: {
-    id: parentId, resource: gpu
+    id: parentId, mechanismId: split ? cheapestCapacity.id : undefined, resource: gpu || split
       ? { label: "NVIDIA H100", unit: "GPU hour", deliveryWindow: "Next available 24-hour block" }
       : { label: "Dataset seats", unit: "seat", deliveryWindow: "Today" },
     asset: NATIVE_TESTNET_NEAR, demandCloses: 10, commitCloses: 20, revealCloses: 30,
@@ -51,21 +56,25 @@ const { transcript } = await simulateProcurement({
   buyers: accounts.slice(0, buyerCount).map(({ receiverId }, index) => ({
     id: receiverId,
     demand: ({ random }) => {
-      const quantity = gpu ? 1 + Math.floor(random() * 2 ** 32) % 8 : index + 1;
-      return { quantity: String(quantity), budget: String(BigInt(quantity) * 7n * priceUnit) };
+      const quantity = gpu ? 1 + Math.floor(random() * 2 ** 32) % 8 : split ? 5 : index + 1;
+      return { quantity: String(quantity), budget: String((split ? 14n : BigInt(quantity) * 7n) * priceUnit) };
     },
   })),
   sellers: accounts.slice(buyerCount).map(({ receiverId }, index) => ({
     id: receiverId,
     offer: ({ pooledQuantity }) => ({
-      capacity: String(BigInt(pooledQuantity) - (gpu && index === 0 ? 1n : 0n)),
+      capacity: split ? String(3 - index) : String(BigInt(pooledQuantity) - (gpu && index === 0 ? 1n : 0n)),
       unitPrice: String(BigInt(2 * index + 2) * priceUnit),
     }),
   })),
 });
 const plan = await settlementPlanFromTranscript(transcript);
-assert.equal(plan.payments.length, buyerCount);
-const sellerId = accounts[buyerCount + (gpu ? 1 : 0)].receiverId;
+assert.equal(plan.payments.length, split ? 2 : buyerCount);
+const sellerIds = split ? accounts.slice(buyerCount).map(({ receiverId }) => receiverId)
+  : [accounts[buyerCount + (gpu ? 1 : 0)].receiverId];
+if (split) assert.deepEqual(plan.payments.map(({ sellerId, amount }) => [sellerId, amount]), [
+  [sellerIds[0], String(6n * priceUnit)], [sellerIds[1], String(8n * priceUnit)],
+]);
 
 const directory = join(".swarmkit", parentId);
 await mkdir(directory, { recursive: true });
@@ -79,28 +88,32 @@ function journal() {
       return undefined;
     }
   }
+  async function reserve(scope, entry) {
+    const target = pathFor(scope);
+    const temporary = target + "." + randomBytes(8).toString("hex");
+    const file = await open(temporary, "wx", 0o600);
+    try {
+      try {
+        await file.writeFile(JSON.stringify(entry));
+        await file.sync();
+      } finally {
+        await file.close();
+      }
+      try {
+        await link(temporary, target);
+      } catch (error) {
+        if (error.code !== "EEXIST") throw error;
+      }
+      return await read(scope);
+    } finally {
+      await unlink(temporary);
+    }
+  }
   return {
     read,
-    async reserve(scope, entry) {
-      const target = pathFor(scope);
-      const temporary = target + "." + randomBytes(8).toString("hex");
-      const file = await open(temporary, "wx", 0o600);
-      try {
-        try {
-          await file.writeFile(JSON.stringify(entry));
-          await file.sync();
-        } finally {
-          await file.close();
-        }
-        try {
-          await link(temporary, target);
-        } catch (error) {
-          if (error.code !== "EEXIST") throw error;
-        }
-        return await read(scope);
-      } finally {
-        await unlink(temporary);
-      }
+    reserve,
+    async bindPlan(scope, fingerprint) {
+      return (await reserve(scope, { fingerprint })).fingerprint === fingerprint;
     },
   };
 }
@@ -123,7 +136,7 @@ const transport = nearTestnetTransport(async (payment) => {
   const { txHash, signedTransaction } = await signer.signTransaction(transaction);
   return { hash: base58.encode(txHash), bytes: Buffer.from(signedTransaction.encode()).toString("base64") };
 }, "https://test.rpc.fastnear.com");
-const authorize = (payment) => payment.sellerId === sellerId
+const authorize = (payment) => sellerIds.includes(payment.sellerId)
   && plan.payments.some((approved) => approved.id === payment.id && approved.amount === payment.amount);
 
 await assert.rejects(executeSettlement(plan, {
@@ -135,8 +148,15 @@ assert.equal(signatures, 1);
 let result = await executeSettlement(plan, { transport, journal: journal(), authorize });
 for (let attempt = 0; !result.summary.paid && attempt < 12; attempt++) {
   await new Promise((resolve) => setTimeout(resolve, 1500));
-  result = await executeSettlement(plan, { transport, journal: journal(), authorize: () => false });
+  result = await executeSettlement(plan, { transport, journal: journal(), authorize: split ? authorize : () => false });
 }
 assert.equal(result.summary.paid, true, JSON.stringify(result));
-assert.equal(signatures, buyerCount);
-console.log(JSON.stringify({ network: "testnet", sellerId, transcript, plan, ...result }, null, 2));
+assert.equal(signatures, plan.payments.length);
+if (split) {
+  const audit = await auditSettlement(transcript, result.receipts, { verifier: transport });
+  assert.ok(audit.checks.every(({ matches }) => matches));
+  assert.equal(audit.verifiedSummary.paid, true);
+}
+console.log(JSON.stringify({
+  network: "testnet", ...(split ? { sellerIds } : { sellerId: sellerIds[0] }), transcript, plan, ...result,
+}, null, 2));

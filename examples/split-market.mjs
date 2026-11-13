@@ -1,4 +1,4 @@
-import { cheapestCapacity, simulateProcurement, settlementPlanFromTranscript } from "swarmkit";
+import { cheapestCapacity, simulateProcurement, settlementPlanFromTranscript } from "near-swarmkit";
 
 const { transcript, stages } = await simulateProcurement({
   seed: 42,
