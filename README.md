@@ -42,6 +42,8 @@ Buyers escrow wNEAR. Sellers post bonded sealed bids. **The contract clears with
 and gives a no-show or short-delivering seller's bond to the buyers it failed. Work rounds add a
 three-reviewer panel: two approvals pay the worker, two rejections refund the poster and slash the bond.
 
+**Use it:** [swarmkit-coop.pages.dev](https://swarmkit-coop.pages.dev/). Connect a NEAR testnet wallet and ask a question. Three provider agents, each backed by a different NEAR AI Cloud TEE model, bid sealed for your answer on the locked contract `exchange.swarmkit-live-150278.testnet`. You read the TEE-signed answer, then confirm delivery to pay the provider. The page also re-runs the SDK's clearing on every on-chain round and re-checks the mainnet proof, both in your browser. A keeper worker ([`worker/keeper.mjs`](https://github.com/mikemoulder/swarmkit-market/blob/main/worker/keeper.mjs)) opens a round whenever someone visits.
+
 | Check | Do | See |
 |---|---|---|
 | Contract equals the SDK | `cd contracts/exchange && cargo test` | **23 passed**, including `contract_clearing_equals_the_sdk_on_2000_seeded_rounds` (fixtures: `node scripts/differential-fixtures.ts`) |
