@@ -65,7 +65,7 @@ settlement and repeated economies**, as one dependency-free package of 1,240 lin
 16. [API reference](#api-reference)
 17. [Repository layout](#repository-layout)
 18. [Status and roadmap](#status-and-roadmap)
-19. [Ecosystem, prior art and licence](#the-swarmkit-ecosystem)
+19. [Ecosystem, acknowledgements and licence](#the-swarmkit-ecosystem)
 
 ## Why SwarmKit
 
@@ -690,17 +690,10 @@ npm run dev                      # the original minimal dashboard on http://loca
 The [scripts README](scripts/README.md) lists every script. Working notes for contributors and
 coding agents are in [AGENTS.md](AGENTS.md).
 
-## Prior art
+## Acknowledgements
 
 - The [NEAR AI Swarms starter prompt](https://github.com/nearai/near-hackathon-prompt-examples/blob/main/tracks/05-swarms.md)
   describes the group-buying swarm that SwarmKit's reference round and the GPU co-op implement.
-- [Co-op](https://github.com/AlphaTechini/co-op) is a group-buying application on NEAR;
-  SwarmKit aims to be the reusable layer beneath applications like it.
-- [AuctionSI](https://github.com/Yashjindal11/auctionsi) explores several auction types for
-  agent marketplaces, and Microsoft's
-  [Magentic Marketplace](https://github.com/microsoft/multi-agent-marketplace) studies buyer
-  and seller agents in simulation. SwarmKit focuses on carrying a decision through to a
-  verified payment on NEAR.
 - [NEAR Intents](https://docs.near-intents.org/) and its Verifier contract provide the
   intent-based settlement path.
 
