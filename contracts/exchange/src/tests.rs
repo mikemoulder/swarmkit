@@ -169,6 +169,11 @@ fn a_seller_that_never_reveals_loses_its_bond_to_the_buyers() {
     w.commit("seller-2.testnet", 10, 50);
     w.at(21).reveal("seller-1.testnet", 10, 100);
     w.at(31).as_("anyone.testnet", 0).clear(U64(0));
+    // In a cleared round the forfeit is settled at finalize; seller-1 delivers in full.
+    w.at(32).as_("buyer-1.testnet", 0).confirm_delivery(U64(0), acct("seller-1.testnet"), U128(2), "ab".repeat(32));
+    w.as_("buyer-2.testnet", 0).confirm_delivery(U64(0), acct("seller-1.testnet"), U128(2), "ab".repeat(32));
+    w.at(41).as_("anyone.testnet", 0).finalize(U64(0));
+    assert_eq!(w.balances("seller-1.testnet").1, BOND);
     assert_eq!(w.balances("buyer-1.testnet").1, BOND / 2);
     assert_eq!(w.balances("buyer-2.testnet").1, BOND / 2);
     assert_eq!(w.balances("seller-2.testnet").1, 0);
