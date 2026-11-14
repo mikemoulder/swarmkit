@@ -120,15 +120,23 @@ of 7 credits an hour. Five sellers bid:
 The pool clears at 4 credits an hour, 360 in total, and each buyer pays only its own hours.
 Run it yourself with `npm run demo`.
 
-**3. Two markets, one economy.** In the [live economy](https://swarmkit-coop.pages.dev/), inference providers buy GPU hours in one SwarmKit market and sell inference in another. A four-round GPU supply shock lifts the GPU price, then provider cost, then the inference price, purely through the agents' own decisions; a test asserts that path, exact cash conservation, and that every round replays from its SDK transcript.
+**3. A GPU co-op you can use, settling live on testnet.** At
+[swarmkit-coop.pages.dev](https://swarmkit-coop.pages.dev) your team's agent joins 19 others in a weekly
+pool, five GPU providers' agents bid sealed, and SwarmKit clears the pool within every team's budget.
+Press *Settle my share* and a Cloudflare Worker pays your share on NEAR testnet through the SDK's own
+`executeSettlement` runner, with its journal in Workers KV: sending the same request twice returns the same
+transaction instead of paying again. [A live settlement from the page](https://testnet.nearblocks.io/txns/Dkj33b1AGH72ixhvxTTbXjHfKH7Z5cNV78F2xbXAt2GY),
+final on testnet. Your team and the five providers have real testnet accounts; the other 19 teams are simulated.
 
-**4. Pooling is cheaper, and the market shows by how much.** In the
+**4. Two markets, one economy.** In the [live economy](https://swarmkit-coop.pages.dev/), inference providers buy GPU hours in one SwarmKit market and sell inference in another. A four-round GPU supply shock lifts the GPU price, then provider cost, then the inference price, purely through the agents' own decisions; a test asserts that path, exact cash conservation, and that every round replays from its SDK transcript.
+
+**5. Pooling is cheaper, and the market shows by how much.** In the
 [recovery lab](https://swarmkit-coop.pages.dev/lab.html)'s GPU cooperative, the first
 round buys 59 hours for **177 credits pooled, against 236** if each buyer had bought alone
 from the same sellers at their solo quotes. The comparison is computed per round; if pooled
 demand cannot be filled, it reports no saving rather than assuming one.
 
-**5. Tests that kill the process.** The core SDK has 15 tests and the market 12. The market's
+**6. Tests that kill the process.** The core SDK has 15 tests and the market 17. The market's
 restart test kills a child process immediately after a payment broadcast is recorded, starts
 a new one, and checks that it recovers the same payment without signing again or applying it
 to the ledger twice. Others cover a twelve-round economy that conserves every credit and unit
@@ -308,7 +316,7 @@ SwarmKit is **alpha**: built for the 2026 NEAR Hackathon (AI Swarms track), test
 audited. Use testnet.
 
 - **Real and tested:** everything above. Rounds, allocation, replay and settlement run in 15
-  core tests and 12 market tests; native testnet settlement in the 22 audited payments listed
+  core tests and 17 market tests; native testnet settlement in the 22 audited payments listed
   above.
 - **Built, not yet run with funds:** the NEAR Intents transport. A live read-only probe signs
   a NEP-413 transfer with an unfunded key and reaches the Verifier's balance check
@@ -325,7 +333,7 @@ audited. Use testnet.
 | Project | What it is |
 |---|---|
 | [**Website and docs**](https://swarmkit.pages.dev/) ([source](https://github.com/mikemoulder/swarmkit-site)) | Quick start, guides, generated API reference, and a panel that runs the SDK in the page |
-| [**SwarmKit Market**](https://swarmkit-coop.pages.dev/) ([source](https://github.com/mikemoulder/swarmkit-market)) | 19 agents across two linked markets: GPU sellers, labs, inference providers and apps, each with its own strategy and stated reasons. Cut the GPU supply and watch the shock reach inference prices. Plus a recovery lab that breaks settlements on purpose |
+| [**SwarmKit GPU Co-op**](https://swarmkit-coop.pages.dev/) ([source](https://github.com/mikemoulder/swarmkit-market)) | Your team's agent buys GPU hours with 19 others: sealed bids, your saving against list price, and your share settled live on NEAR testnet. Plus a two-market economy where a GPU outage reaches inference prices, and a recovery lab that breaks settlements on purpose |
 | [**llms.txt**](https://swarmkit.pages.dev/llms.txt) · [**llms-full.txt**](https://swarmkit.pages.dev/llms-full.txt) | The docs as plain text for language models and coding agents |
 | [**Agent HTTP service**](examples/agent-service.mjs) | Agents submit commands over HTTP; identity comes from the credential, not the request |
 | [**SQLite round store**](examples/sqlite-round-store.mjs) | A durable coordinator that survives restarts, with compare-and-set writes |
