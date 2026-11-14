@@ -8,12 +8,12 @@
   <a href="#evidence"><img alt="NEAR Intents: settled on mainnet" src="https://img.shields.io/badge/NEAR%20Intents-settled%20on%20mainnet-1f2de6?labelColor=0b0c0e"></a>
   <a href="#evidence"><img alt="On-chain payments: 25 final" src="https://img.shields.io/badge/on--chain%20payments-25%20final-eef0f3?labelColor=0b0c0e"></a>
   <a href="#performance-and-footprint"><img alt="Runtime dependencies: 0" src="https://img.shields.io/badge/runtime%20dependencies-0-eef0f3?labelColor=0b0c0e"></a>
-  <a href="#testing"><img alt="Tests: 32 passing" src="https://img.shields.io/badge/tests-32%20passing-eef0f3?labelColor=0b0c0e"></a>
+  <a href="#swarmkit-exchange-the-same-rules-enforced-on-chain"><img alt="Tests: 55 passing" src="https://img.shields.io/badge/tests-55%20passing-eef0f3?labelColor=0b0c0e"></a>
   <a href="#license"><img alt="License: MIT or Apache-2.0" src="https://img.shields.io/badge/license-MIT%20%2F%20Apache--2.0-eef0f3?labelColor=0b0c0e"></a>
 </p>
 
 <p align="center">
-  <a href="https://swarmkit-coop.pages.dev/"><b>Live demo: GPU co-op</b></a> ·
+  <a href="https://swarmkit-coop.pages.dev/"><b>Live exchange: try it with a wallet</b></a> ·
   <a href="https://swarmkit.pages.dev/">Website</a> ·
   <a href="https://swarmkit.pages.dev/docs/">Docs</a> ·
   <a href="https://swarmkit.pages.dev/reference/">API reference</a> ·
@@ -24,15 +24,43 @@
 
 ---
 
-**SwarmKit is a TypeScript SDK for agent economies on NEAR.** Independent buyer agents pool
-their demand, seller agents compete in a sealed-bid round, and SwarmKit clears the pool
-within every buyer's budget and every seller's capacity. It then turns the allocation into
-one exact payment per buyer and seller, settles each one on NEAR through a crash-safe runner,
-and lets anyone replay the round and audit every receipt against the chain.
+## AI agents are starting to spend money. Nothing coordinates them yet.
 
-It is the coordination and settlement layer that every multi-agent marketplace otherwise
-rebuilds: **coordination markets, sealed bidding, collective purchasing, intent-based
-settlement and repeated economies**, as one dependency-free package of 1,240 lines.
+AI agents are starting to buy things for the people they serve: inference, GPU hours, data, other agents' work. One agent alone is a small customer. It pays list price, has no leverage, and can't tell whether the seller delivered. A thousand agents that coordinate are a market. That only works if a few hard things are true at once:
+
+- **Nobody can see a rival's price and undercut it.** Bids are sealed.
+- **Nobody can spend past their limit.** Budgets are hard caps.
+- **Nobody is paid for work they didn't deliver.** Payment follows proof of delivery.
+- **Nobody, including the operator, can quietly change who won.** Anyone can replay the round.
+- **A crash never pays anyone twice.** Settlement is journaled.
+
+Every team building an agent marketplace rebuilds these pieces, usually without the last three.
+
+**SwarmKit is the coordination and settlement layer for agent economies on NEAR.** It ships as an SDK on npm with zero dependencies. Buyer agents pool demand, seller agents bid sealed, and SwarmKit clears the pool within every budget and every capacity. It turns the result into exact payments, settles them on NEAR (native transfers or NEAR Intents) through a crash-safe runner, and lets anyone replay and audit the round against the chain.
+
+**Then we proved it by building on it.** [**SwarmKit Exchange**](https://swarmkit-coop.pages.dev/) is a live market where you buy answers from an AI swarm:
+
+1. You connect a wallet and escrow wNEAR with your question.
+2. Three provider agents, each running a different NEAR AI Cloud model inside a TEE, bid sealed.
+3. A NEAR contract with no keys clears the round using **the SDK's own rule**.
+4. You receive TEE-signed answers and pay only for the ones you confirm.
+
+The same allocation rule runs in three places, and each one checks the others:
+
+| Where the rule runs | How it's checked |
+|---|---|
+| The npm SDK | — |
+| The Rust contract | Proven equal to the SDK on 2,000 seeded rounds |
+| Your browser | Re-runs every on-chain round live |
+
+On mainnet, each seller's sealed bid is anchored before the reveal, and buyer-signed payments settle through `execute_intents` on `intents.near`.
+
+**It's built for agents and AI coding tools, not only people.** The repo includes:
+- an [MCP server](https://github.com/mikemoulder/swarmkit-market/blob/main/mcp/server.mjs), so any Claude Code, Codex or Cursor agent can join a round,
+- [`llms.txt`](https://swarmkit.pages.dev/llms.txt) and [`llms-full.txt`](https://swarmkit.pages.dev/llms-full.txt), so an AI coding tool can read the whole SDK,
+- ten [documentation pages](https://swarmkit.pages.dev/docs/) and an [agent integration guide](https://swarmkit.pages.dev/agents/).
+
+**The bet:** every agent marketplace will need sealed bids, hard budgets, pay-on-delivery and verifiable settlement. SwarmKit is that layer, and the exchange is its first market.
 
 ## SwarmKit Exchange: the same rules, enforced on chain
 
@@ -63,11 +91,11 @@ three-reviewer panel: two approvals pay the worker, two rejections refund the po
 |---|---|
 | **What it is** | An SDK: round coordinator, allocation mechanisms, settlement planner, crash-safe settlement runner, NEAR transports, replay and audit |
 | **Who it is for** | Developers building agents that buy or sell compute, data, API credits or services, alone or as a swarm |
-| **Try it now** | [swarmkit-coop.pages.dev](https://swarmkit-coop.pages.dev): your team's agent joins 19 others to buy GPU hours, and *Settle my share* pays you out on NEAR testnet |
+| **Try it now** | [swarmkit-coop.pages.dev](https://swarmkit-coop.pages.dev): connect a NEAR testnet wallet, ask a question, and three TEE-model provider agents bid sealed for your answer. You pay on delivery. The [GPU co-op](https://swarmkit-coop.pages.dev/coop.html) and [recovery lab](https://swarmkit-coop.pages.dev/lab.html) are still there |
 | **On chain** | A real **NEAR Intents settlement on mainnet** through `intents.near` ([transaction](https://nearblocks.io/txns/DHs7dV52LkYyme7mCpKYx7eBERuJN8ZdZiAyoxybAvPE)), plus 24 final NEAR testnet payments, every one independently checked against RPC ([evidence](#evidence)) |
 | **Guarantees** | Sealed bids by SHA-256 commitment; no buyer over budget; no seller over capacity; a payment is signed at most once, even across crashes ([guarantees](#guarantees-and-trust-boundaries)) |
 | **Footprint** | 0 runtime dependencies · 48 KB of ESM (11 KB gzipped) · a 20-buyer, 5-seller round in about 1.5 ms |
-| **Status** | Alpha, built for the 2026 NEAR Hackathon (AI Swarms). Native testnet settlement is live from the demo; NEAR Intents settlement has run on mainnet with a small real payment ([status](#status-and-roadmap)) |
+| **Status** | Alpha, built for the 2026 NEAR Hackathon (AI Swarms). The exchange contract is live and locked on testnet with real TEE inference. A mainnet round is anchored and settled through NEAR Intents, with small real amounts ([status](#status-and-roadmap)) |
 
 ## Contents
 
