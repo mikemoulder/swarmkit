@@ -18,7 +18,7 @@ impl World {
     fn new() -> Self {
         let mut world = World { contract: Exchange::new(acct("wrap.testnet")), now: 1_000 * MS };
         world.as_("coordinator.testnet", 0);
-        world.contract.open_round("1M inference tokens".into(), U64(10), U64(10), U64(10), U64(10), U128(BOND));
+        world.contract.open_round("1M inference tokens".into(), U64(10), U64(10), U64(10), U64(10), U128(BOND), None, None);
         world
     }
     fn as_(&mut self, who: &str, deposit: u128) -> &mut Exchange {
@@ -285,4 +285,64 @@ fn contract_clearing_equals_the_sdk_on_2000_seeded_rounds() {
         cleared += ours.is_some() as usize;
     }
     assert!(cleared > 100, "fixture should exercise many cleared rounds");
+}
+
+fn work_world() -> World {
+    let mut w = World { contract: Exchange::new(acct("wrap.testnet")), now: 1_000 * MS };
+    let panel = vec![acct("rev-1.testnet"), acct("rev-2.testnet"), acct("rev-3.testnet")];
+    w.as_("poster.testnet", 0).open_round("audit a contract".into(), U64(10), U64(10), U64(10), U64(10), U128(BOND), Some(panel), Some("aa".repeat(32)));
+    w.at(1).join("poster.testnet", 2, 1_000);
+    w.at(11).commit("worker-1.testnet", 1, 300);
+    w.commit("worker-2.testnet", 1, 350);
+    w.at(21).reveal("worker-1.testnet", 1, 300);
+    w.reveal("worker-2.testnet", 1, 350);
+    assert_eq!(w.at(31).as_("anyone.testnet", 0).clear(U64(0)), Status::Cleared);
+    w
+}
+
+#[test]
+fn two_of_three_reviewers_approve_and_the_worker_is_paid() {
+    let mut w = work_world();
+    let receipt = "bb".repeat(32);
+    w.at(32).as_("rev-1.testnet", 0).review(U64(0), acct("poster.testnet"), acct("worker-1.testnet"), true, receipt.clone());
+    assert_eq!(w.balances("worker-1.testnet").0, 0);
+    w.as_("rev-3.testnet", 0).review(U64(0), acct("poster.testnet"), acct("worker-1.testnet"), true, receipt);
+    assert_eq!(w.balances("worker-1.testnet").0, 300);
+}
+
+#[test]
+fn two_rejections_refund_the_poster_and_slash_the_worker() {
+    let mut w = work_world();
+    let receipt = "bb".repeat(32);
+    w.at(32).as_("rev-1.testnet", 0).review(U64(0), acct("poster.testnet"), acct("worker-2.testnet"), false, receipt.clone());
+    w.as_("rev-2.testnet", 0).review(U64(0), acct("poster.testnet"), acct("worker-2.testnet"), false, receipt.clone());
+    w.as_("rev-1.testnet", 0).review(U64(0), acct("poster.testnet"), acct("worker-1.testnet"), true, receipt.clone());
+    w.as_("rev-2.testnet", 0).review(U64(0), acct("poster.testnet"), acct("worker-1.testnet"), true, receipt);
+    w.at(41).as_("anyone.testnet", 0).finalize(U64(0));
+    assert_eq!(w.balances("poster.testnet").0, 1_000 - 650 + 350);
+    assert_eq!(w.balances("poster.testnet").1, BOND);
+    assert_eq!(w.balances("worker-2.testnet").1, 0);
+    assert_eq!(w.balances("worker-1.testnet").1, BOND);
+}
+
+#[test]
+#[should_panic(expected = "not a reviewer of this round")]
+fn only_the_panel_can_review() {
+    let mut w = work_world();
+    w.at(32).as_("poster.testnet", 0).review(U64(0), acct("poster.testnet"), acct("worker-1.testnet"), true, "bb".repeat(32));
+}
+
+#[test]
+#[should_panic(expected = "decided by its review panel")]
+fn a_poster_cannot_self_confirm_a_work_round() {
+    let mut w = work_world();
+    w.at(32).as_("poster.testnet", 0).confirm_delivery(U64(0), acct("worker-1.testnet"), U128(1), "bb".repeat(32));
+}
+
+#[test]
+#[should_panic(expected = "reviewer already voted")]
+fn a_reviewer_votes_once() {
+    let mut w = work_world();
+    w.at(32).as_("rev-1.testnet", 0).review(U64(0), acct("poster.testnet"), acct("worker-1.testnet"), false, "bb".repeat(32));
+    w.as_("rev-1.testnet", 0).review(U64(0), acct("poster.testnet"), acct("worker-1.testnet"), true, "bb".repeat(32));
 }

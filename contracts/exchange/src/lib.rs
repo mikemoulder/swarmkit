@@ -69,6 +69,9 @@ pub struct Line {
     pub unit_price: U128,
     pub delivered: U128,
     pub receipts: Vec<String>,
+    /// Reviewer votes (work rounds only): (reviewer, approve).
+    pub votes: Vec<(AccountId, bool)>,
+    pub rejected: bool,
 }
 
 #[near(serializers = [borsh, json])]
@@ -88,6 +91,10 @@ pub struct Round {
     pub offers: Vec<Offer>,
     pub lines: Vec<Line>,
     pub total: U128,
+    /// Empty for compute rounds. For work rounds, three reviewers decide delivery by 2-of-3 vote.
+    pub reviewers: Vec<AccountId>,
+    /// sha256 of the job brief, for work rounds.
+    pub brief: Option<String>,
 }
 
 #[near(contract_state)]
@@ -181,8 +188,14 @@ impl Exchange {
         reveal_ms: U64,
         delivery_ms: U64,
         seller_bond: U128,
+        reviewers: Option<Vec<AccountId>>,
+        brief: Option<String>,
     ) -> U64 {
         require!(!resource.is_empty() && resource.len() <= 128, "resource must be 1-128 bytes");
+        let reviewers = reviewers.unwrap_or_default();
+        require!(reviewers.is_empty() || reviewers.len() == 3, "a review panel has exactly three reviewers");
+        require!(reviewers.iter().enumerate().all(|(i, r)| !reviewers[..i].contains(r)), "reviewers must be distinct");
+        require!(brief.as_deref().map_or(true, is_digest), "brief must be a sha256 hex digest");
         require!(demand_ms.0 > 0 && commit_ms.0 > 0 && reveal_ms.0 > 0 && delivery_ms.0 > 0, "empty phase");
         let ms = 1_000_000u64;
         let demand_end = env::block_timestamp() + demand_ms.0 * ms;
@@ -204,6 +217,8 @@ impl Exchange {
             offers: vec![],
             lines: vec![],
             total: U128(0),
+            reviewers,
+            brief,
         });
         env::log_str(&format!("EVENT_JSON:{{\"standard\":\"swarmkit\",\"version\":\"1\",\"event\":\"round_opened\",\"data\":{{\"round_id\":{id}}}}}"));
         U64(id)
@@ -281,6 +296,8 @@ impl Exchange {
                         unit_price: U128(price),
                         delivered: U128(0),
                         receipts: vec![],
+                        votes: vec![],
+                        rejected: false,
                     })
                     .collect();
                 round.total = U128(total);
@@ -301,6 +318,7 @@ impl Exchange {
         let buyer = env::predecessor_account_id();
         require!(is_digest(&receipt), "receipt must be a sha256 hex digest");
         let round = self.round_mut(round_id.0);
+        require!(round.reviewers.is_empty(), "this round's delivery is decided by its review panel");
         require!(round.status == Status::Cleared && env::block_timestamp() < round.delivery_end.0, "not in delivery phase");
         let line = round.lines.iter_mut().find(|l| l.buyer == buyer && l.seller == seller).expect("no such line");
         require!(units.0 > 0 && line.delivered.0 + units.0 <= line.quantity.0, "more than allocated");
@@ -308,6 +326,33 @@ impl Exchange {
         line.receipts.push(receipt);
         let amount = units.0 * line.unit_price.0;
         self.credit_token(&seller, amount);
+    }
+
+    /// Work rounds: a reviewer votes on one line's delivered work. Two approvals pay the worker for the
+    /// whole line; two rejections mark it rejected, so `finalize` refunds the poster and slashes the bond.
+    pub fn review(&mut self, round_id: U64, buyer: AccountId, seller: AccountId, approve: bool, receipt: String) {
+        let reviewer = env::predecessor_account_id();
+        require!(is_digest(&receipt), "receipt must be a sha256 hex digest");
+        let round = self.round_mut(round_id.0);
+        require!(round.reviewers.contains(&reviewer), "not a reviewer of this round");
+        require!(round.status == Status::Cleared && env::block_timestamp() < round.delivery_end.0, "not in delivery phase");
+        let line = round.lines.iter_mut().find(|l| l.buyer == buyer && l.seller == seller).expect("no such line");
+        require!(!line.rejected && line.delivered.0 == 0, "line already decided");
+        require!(line.votes.iter().all(|(r, _)| *r != reviewer), "reviewer already voted");
+        line.votes.push((reviewer, approve));
+        let approvals = line.votes.iter().filter(|(_, a)| *a).count();
+        let rejections = line.votes.len() - approvals;
+        let mut payout = 0;
+        if approvals >= 2 {
+            line.delivered = line.quantity;
+            line.receipts.push(receipt);
+            payout = line.quantity.0 * line.unit_price.0;
+        } else if rejections >= 2 {
+            line.rejected = true;
+        }
+        if payout > 0 {
+            self.credit_token(&seller, payout);
+        }
     }
 
     /// Anyone, after the delivery deadline.
@@ -332,7 +377,7 @@ impl Exchange {
         let amount = self.token_balances.remove(&account).unwrap_or(0);
         require!(amount > 0, "nothing to withdraw");
         Promise::new(self.token.clone()).function_call(
-            "ft_transfer".into(),
+            "ft_transfer".to_string(),
             serde_json::json!({"receiver_id": account, "amount": U128(amount)}).to_string().into_bytes(),
             NearToken::from_yoctonear(1),
             near_sdk::Gas::from_tgas(15),
