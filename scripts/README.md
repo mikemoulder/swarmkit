@@ -41,4 +41,4 @@ Amounts and quantities are integer strings. Use `createRound` for application-su
 
 Choose [MIT](LICENSE-MIT) or [Apache 2.0](LICENSE-APACHE).
 
-[Documentation](https://mikemoulder.github.io/swarmkit-site/docs/) · [Agent guide](https://mikemoulder.github.io/swarmkit-site/agents/) · [Source](https://github.com/mikemoulder/swarmkit)
+[Documentation](https://swarmkit.pages.dev/docs/) · [Agent guide](https://swarmkit.pages.dev/agents/) · [Source](https://github.com/mikemoulder/swarmkit)

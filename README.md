@@ -1,9 +1,9 @@
 <p align="center">
-  <a href="https://mikemoulder.github.io/swarmkit-site/"><img src="assets/readme-banner.png" alt="SwarmKit: agent markets on NEAR. Pooled, sealed, settled and audited. 20 of 20 testnet payments final in one GPU round; 177 versus 236 credits for 59 GPU hours, pooled against bought solo; 0 payments re-signed after a crash mid-settlement." width="100%"></a>
+  <a href="https://swarmkit.pages.dev/"><img src="assets/readme-banner.png" alt="SwarmKit: agent markets on NEAR. Pooled, sealed, settled and audited. 20 of 20 testnet payments final in one GPU round; 177 versus 236 credits for 59 GPU hours, pooled against bought solo; 0 payments re-signed after a crash mid-settlement." width="100%"></a>
 </p>
 
 <p align="center">
-  <a href="https://mikemoulder.github.io/swarmkit-site/docs/"><img alt="near-swarmkit 0.1.0" src="https://img.shields.io/badge/near--swarmkit-0.1.0-1f2de6?labelColor=0b0c0e"></a>
+  <a href="https://swarmkit.pages.dev/docs/"><img alt="near-swarmkit 0.1.0" src="https://img.shields.io/badge/near--swarmkit-0.1.0-1f2de6?labelColor=0b0c0e"></a>
   <a href="#quick-start"><img alt="Node 22.18+" src="https://img.shields.io/badge/node-22.18%2B-eef0f3?labelColor=0b0c0e"></a>
   <a href="#proof-that-it-settles"><img alt="Testnet payments: 22 of 22 final" src="https://img.shields.io/badge/testnet%20payments-22%2F22%20final-1f2de6?labelColor=0b0c0e"></a>
   <a href="#proof-that-it-settles"><img alt="Runtime dependencies: 0" src="https://img.shields.io/badge/runtime%20dependencies-0-eef0f3?labelColor=0b0c0e"></a>
@@ -11,12 +11,12 @@
 </p>
 
 <p align="center">
-  <a href="https://mikemoulder.github.io/swarmkit-site/"><b>Website</b></a> ·
-  <a href="https://mikemoulder.github.io/swarmkit-site/docs/">Docs</a> ·
-  <a href="https://mikemoulder.github.io/swarmkit-market/">Market demo</a> ·
-  <a href="https://mikemoulder.github.io/swarmkit-site/reference/">API reference</a> ·
+  <a href="https://swarmkit.pages.dev/"><b>Website</b></a> ·
+  <a href="https://swarmkit.pages.dev/docs/">Docs</a> ·
+  <a href="https://swarmkit-coop.pages.dev/">Market demo</a> ·
+  <a href="https://swarmkit.pages.dev/reference/">API reference</a> ·
   <a href="RULES.md">Market rules</a> ·
-  <a href="https://mikemoulder.github.io/swarmkit-site/llms.txt">llms.txt</a>
+  <a href="https://swarmkit.pages.dev/llms.txt">llms.txt</a>
 </p>
 
 ---
@@ -99,8 +99,8 @@ right after the first signed payment was journaled, then resumed from the journa
 
 | Run | Agents | Payments | Total | Evidence |
 |---|---|---:|---:|---|
-| GPU round, one winning seller | 20 buyers, 5 sellers | **20 of 20** final | 0.036 NEAR | [Round, plan and receipts](https://mikemoulder.github.io/swarmkit-market/gpu-testnet.json) · [first transfer](https://testnet.nearblocks.io/txns/9ov59i19duUyDkwcXNn5nTY7vwvJV3cVXpQoRSCeyx4s) |
-| Split order across two sellers | 1 buyer, 2 sellers | **2 of 2** final | 0.0014 NEAR | [Round, plan and receipts](https://mikemoulder.github.io/swarmkit-market/split-testnet.json) · [seller 1](https://testnet.nearblocks.io/txns/5fo7YBXAhgM5Ar7sGEQgohDoQeZHzrwpFJUeVfbLp9fY) · [seller 2](https://testnet.nearblocks.io/txns/45diCCuBhfCzxMrbJUxfNwagrQa8ntkmgw63cKQ4S5Di) |
+| GPU round, one winning seller | 20 buyers, 5 sellers | **20 of 20** final | 0.036 NEAR | [Round, plan and receipts](https://swarmkit-coop.pages.dev/gpu-testnet.json) · [first transfer](https://testnet.nearblocks.io/txns/9ov59i19duUyDkwcXNn5nTY7vwvJV3cVXpQoRSCeyx4s) |
+| Split order across two sellers | 1 buyer, 2 sellers | **2 of 2** final | 0.0014 NEAR | [Round, plan and receipts](https://swarmkit-coop.pages.dev/split-testnet.json) · [seller 1](https://testnet.nearblocks.io/txns/5fo7YBXAhgM5Ar7sGEQgohDoQeZHzrwpFJUeVfbLp9fY) · [seller 2](https://testnet.nearblocks.io/txns/45diCCuBhfCzxMrbJUxfNwagrQa8ntkmgw63cKQ4S5Di) |
 
 A separate, read-only audit replayed each round from its transcript and matched all 22
 receipts against testnet RPC: sender, recipient, amount and status. The evidence files hold
@@ -120,10 +120,10 @@ of 7 credits an hour. Five sellers bid:
 The pool clears at 4 credits an hour, 360 in total, and each buyer pays only its own hours.
 Run it yourself with `npm run demo`.
 
-**3. Two markets, one economy.** In the [live economy](https://mikemoulder.github.io/swarmkit-market/), inference providers buy GPU hours in one SwarmKit market and sell inference in another. A four-round GPU supply shock lifts the GPU price, then provider cost, then the inference price, purely through the agents' own decisions; a test asserts that path, exact cash conservation, and that every round replays from its SDK transcript.
+**3. Two markets, one economy.** In the [live economy](https://swarmkit-coop.pages.dev/), inference providers buy GPU hours in one SwarmKit market and sell inference in another. A four-round GPU supply shock lifts the GPU price, then provider cost, then the inference price, purely through the agents' own decisions; a test asserts that path, exact cash conservation, and that every round replays from its SDK transcript.
 
 **4. Pooling is cheaper, and the market shows by how much.** In the
-[recovery lab](https://mikemoulder.github.io/swarmkit-market/lab.html)'s GPU cooperative, the first
+[recovery lab](https://swarmkit-coop.pages.dev/lab.html)'s GPU cooperative, the first
 round buys 59 hours for **177 credits pooled, against 236** if each buyer had bought alone
 from the same sellers at their solo quotes. The comparison is computed per round; if pooled
 demand cannot be filled, it reports no saving rather than assuming one.
@@ -256,7 +256,7 @@ RPC. It exits non-zero if any observed status differs from the claim.
 | **Audit** | `auditSettlement` | Claimed against observed receipt status, with reused hashes rejected |
 
 Full reference, generated from the package's declarations:
-[mikemoulder.github.io/swarmkit-site/reference](https://mikemoulder.github.io/swarmkit-site/reference/).
+[swarmkit.pages.dev/reference](https://swarmkit.pages.dev/reference/).
 
 ## What SwarmKit refuses to do
 
@@ -324,13 +324,13 @@ audited. Use testnet.
 
 | Project | What it is |
 |---|---|
-| [**Website and docs**](https://mikemoulder.github.io/swarmkit-site/) ([source](https://github.com/mikemoulder/swarmkit-site)) | Quick start, guides, generated API reference, and a panel that runs the SDK in the page |
-| [**SwarmKit Market**](https://mikemoulder.github.io/swarmkit-market/) ([source](https://github.com/mikemoulder/swarmkit-market)) | 19 agents across two linked markets: GPU sellers, labs, inference providers and apps, each with its own strategy and stated reasons. Cut the GPU supply and watch the shock reach inference prices. Plus a recovery lab that breaks settlements on purpose |
-| [**llms.txt**](https://mikemoulder.github.io/swarmkit-site/llms.txt) · [**llms-full.txt**](https://mikemoulder.github.io/swarmkit-site/llms-full.txt) | The docs as plain text for language models and coding agents |
+| [**Website and docs**](https://swarmkit.pages.dev/) ([source](https://github.com/mikemoulder/swarmkit-site)) | Quick start, guides, generated API reference, and a panel that runs the SDK in the page |
+| [**SwarmKit Market**](https://swarmkit-coop.pages.dev/) ([source](https://github.com/mikemoulder/swarmkit-market)) | 19 agents across two linked markets: GPU sellers, labs, inference providers and apps, each with its own strategy and stated reasons. Cut the GPU supply and watch the shock reach inference prices. Plus a recovery lab that breaks settlements on purpose |
+| [**llms.txt**](https://swarmkit.pages.dev/llms.txt) · [**llms-full.txt**](https://swarmkit.pages.dev/llms-full.txt) | The docs as plain text for language models and coding agents |
 | [**Agent HTTP service**](examples/agent-service.mjs) | Agents submit commands over HTTP; identity comes from the credential, not the request |
 | [**SQLite round store**](examples/sqlite-round-store.mjs) | A durable coordinator that survives restarts, with compare-and-set writes |
 
-[![SwarmKit Market after a settled split order](assets/market.png)](https://mikemoulder.github.io/swarmkit-market/)
+[![SwarmKit Market after a settled split order](assets/market.png)](https://swarmkit-coop.pages.dev/)
 
 ## Develop
 

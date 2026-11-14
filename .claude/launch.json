@@ -1,0 +1,30 @@
+{
+  "version": "0.0.1",
+  "configurations": [
+    {
+      "name": "site",
+      "runtimeExecutable": "node",
+      "runtimeArgs": [
+        "C:/Users/DELL/AppData/Local/Temp/claude/b8374c25fcdb5de9/5f7f6ebe-cf93-49c0-b619-74a85dc7b156/scratchpad/serve.mjs",
+        "C:/Users/DELL/Downloads/Near Hack/projects/swarmkit-site",
+        "4173"
+      ],
+      "port": 4173
+    },
+    {
+      "name": "market",
+      "runtimeExecutable": "npm",
+      "runtimeArgs": [
+        "--prefix",
+        "C:/Users/DELL/Downloads/Near Hack/projects/swarmkit-market",
+        "run",
+        "dev",
+        "--",
+        "--port",
+        "5180",
+        "--strictPort"
+      ],
+      "port": 5180
+    }
+  ]
+}
