@@ -3,7 +3,7 @@
 </p>
 
 <p align="center">
-  <a href="https://swarmkit.pages.dev/docs/"><img alt="near-swarmkit 0.1.0" src="https://img.shields.io/badge/near--swarmkit-0.1.0-1f2de6?labelColor=0b0c0e"></a>
+  <a href="https://www.npmjs.com/package/near-swarmkit"><img alt="npm: near-swarmkit" src="https://img.shields.io/npm/v/near-swarmkit?color=1f2de6&labelColor=0b0c0e"></a>
   <a href="#quick-start"><img alt="Node 22.18+" src="https://img.shields.io/badge/node-22.18%2B-eef0f3?labelColor=0b0c0e"></a>
   <a href="#evidence"><img alt="Testnet payments: 24 final" src="https://img.shields.io/badge/testnet%20payments-24%20final-1f2de6?labelColor=0b0c0e"></a>
   <a href="#performance-and-footprint"><img alt="Runtime dependencies: 0" src="https://img.shields.io/badge/runtime%20dependencies-0-eef0f3?labelColor=0b0c0e"></a>
@@ -86,18 +86,17 @@ not an afterthought.
 ## Quick start
 
 ```bash
+npm install near-swarmkit
+```
+
+Node 22.18 or newer, ESM, with TypeScript declarations included and no runtime dependencies.
+To run the reference GPU round and the test suite from source:
+
+```bash
 git clone https://github.com/mikemoulder/swarmkit && cd swarmkit
 npm ci
 npm run demo        # the 20-buyer, 5-seller GPU round
 npm test            # 15 tests
-```
-
-Node 22.18 or newer. The package is built and passes an npm publish dry run, but is not on
-the registry yet, so install the tarball:
-
-```bash
-npm run pack:sdk
-cd ../your-project && npm install ../swarmkit/dist/near-swarmkit-0.1.0.tgz
 ```
 
 A complete market in one call. Two buyers pool five units; the cheaper seller cannot cover the
@@ -664,7 +663,7 @@ audited. Use testnet.
 - **Known limitations:** the coordinator is a trusted off-chain service; settlement is per
   buyer, not atomic across the pool; no refunds or delivery checks; `cheapestCapacity` is a
   greedy heuristic.
-- **Next:** publish `near-swarmkit` to npm; a funded Intents run; an on-chain commitment log
+- **Next:** a funded Intents run; an on-chain commitment log
   so anyone can prove a round admitted every bid; more mechanisms (uniform-price and Vickrey
   clearing); Python bindings over the same transcript format.
 
