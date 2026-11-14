@@ -13,3 +13,5 @@ projects/
 .DS_Store
 *.[mM][dD]
 ![rR][eE][aA][dD][mM][eE].[mM][dD]
+.claude/skills/
+.taste-skill/

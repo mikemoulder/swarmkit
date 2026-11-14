@@ -24,3 +24,5 @@ export { auditSettlement } from "./audit.ts";
 export type { ReceiptClaim } from "./audit.ts";
 export { authorizeWithSpendingPolicies, executeWithSpendingPolicies, spendingPolicyMessage } from "./spending-policy.ts";
 export type { SpendingPolicy } from "./spending-policy.ts";
+export { startSimulation, advanceSimulation, explainAllocation } from "./session.ts";
+export type { SimulationSession } from "./session.ts";

@@ -11,11 +11,11 @@ type StrategyContext = {
 };
 export type BuyerStrategy = {
   id: string;
-  demand: (context: StrategyContext) => Demand | null;
+  demand: (context: StrategyContext) => Demand | null | Promise<Demand | null>;
 };
 export type SellerStrategy = {
   id: string;
-  offer: (context: StrategyContext & { pooledQuantity: string }) => Omit<Bid, "salt"> | null;
+  offer: (context: StrategyContext & { pooledQuantity: string }) => Omit<Bid, "salt"> | null | Promise<Omit<Bid, "salt"> | null>;
   reveal?: boolean;
 };
 export type SimulationOptions = {
@@ -46,7 +46,7 @@ export async function simulateProcurement(options: SimulationOptions) {
   }
 
   for (const buyer of options.buyers) {
-    if (!round.submitDemand(buyer.id, buyer.demand(context()))) {
+    if (!round.submitDemand(buyer.id, await buyer.demand(context()))) {
       throw new Error(`Invalid demand from ${buyer.id}`);
     }
   }
@@ -55,7 +55,7 @@ export async function simulateProcurement(options: SimulationOptions) {
   now = spec.demandCloses;
   if (demand.quantity !== "0") {
     for (const seller of options.sellers) {
-      const offer = seller.offer({ ...context(), pooledQuantity: demand.quantity });
+      const offer = await seller.offer({ ...context(), pooledQuantity: demand.quantity });
       if (!offer) continue;
       const salt = Array.from({ length: 8 }, () => randomWord().toString(16).padStart(8, "0")).join("");
       const bid = { ...offer, salt };

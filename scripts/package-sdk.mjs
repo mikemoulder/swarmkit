@@ -25,6 +25,9 @@ await Promise.all(
     ["scripts/README.md", "README.md"],
     ["examples/dataset-market.mjs", "examples/dataset-market.mjs"],
     ["examples/split-market.mjs", "examples/split-market.mjs"],
+    ["examples/incremental-market.mjs", "examples/incremental-market.mjs"],
+    ["examples/sqlite-round-store.mjs", "examples/sqlite-round-store.mjs"],
+    ["examples/agent-service.mjs", "examples/agent-service.mjs"],
   ].map(([source, destination]) =>
     copyFile(new URL(source, root), new URL(`dist/sdk/${destination}`, root))),
 );

@@ -22,7 +22,7 @@ npm install /path/to/near-swarmkit-0.1.0.tgz
 node node_modules/near-swarmkit/examples/split-market.mjs
 ```
 
-The package includes JavaScript, TypeScript declarations, two examples, and both licenses. It has zero runtime dependencies. The [quickstart](https://mikemoulder.github.io/swarmkit-site/docs/) includes a complete two-buyer market you can adapt.
+The package includes JavaScript, TypeScript declarations, runnable market examples, SQLite and authenticated-agent service recipes, and both licenses. Its SDK runtime has zero dependencies. The [quickstart](https://mikemoulder.github.io/swarmkit-site/docs/) includes a complete two-buyer market you can adapt.
 
 From the core repository, run the built-in scenarios and checks.
 
@@ -51,6 +51,8 @@ flowchart LR
 |---|---|
 | `createRound`, `commitBid` | Run sealed-bid procurement with your own participants, deadlines and clock. |
 | `simulateProcurement` | Run deterministic buyer and seller strategies against the real coordinator, with a snapshot at each stage. |
+| `startSimulation`, `advanceSimulation` | Execute asynchronous policies one stage at a time and resume from a private serialized checkpoint. |
+| `explainAllocation` | Inspect charges, unused buyer budgets and seller outcomes from a closed round. |
 | `createSettlementPlan` | Convert a closed allocation into exact, individually identified buyer payments. |
 | `summarizeSettlement` | Reconcile pending, confirmed and failed amounts from per-payment receipts. |
 | `replayRound`, `settlementPlanFromTranscript` | Recompute the outcome and payments from a versioned record of accepted inputs. |
@@ -71,7 +73,9 @@ Save `round.transcript()` as JSON and restore the coordinator with `resumeRound(
 
 For persistent coordinators, implement `RoundStore.compareAndSet` as an atomic update keyed by round ID and expected event count. Authenticate callers before submitting their commands. On a revision conflict, re-read and revalidate the command against the current phase before retrying.
 
-Applications supply participant authentication and signing. The simulator generates synthetic receipts.
+Applications supply participant authentication and signing. The simulator generates synthetic receipts. Buyer and seller strategies can return promises. Incremental simulation checkpoints contain unrevealed offers and must remain private; publish the transcript or replayed snapshot instead. Strategies must be free of external side effects because an uncommitted step may run again after a crash.
+
+The [incremental example](examples/incremental-market.mjs) demonstrates stage execution and serialized recovery. The [SQLite RoundStore](examples/sqlite-round-store.mjs) implements atomic compare-and-set. The [agent HTTP service](examples/agent-service.mjs) derives identities from credentials, enforces buyer/seller roles, and submits commands through the stored coordinator. These are integration recipes; applications still own credential management and production hosting.
 
 For NEAR, `planNearSubaccounts(parentId, agents)` prepares create, fund and add-key actions for each direct child. The parent signs each action batch with its NEAR client. Each agent supplies a distinct public key.
 
@@ -118,10 +122,10 @@ The auction coordinator and resource delivery run off-chain. Applications authen
 | Project | What you can do |
 |---|---|
 | [SwarmKit website](https://mikemoulder.github.io/swarmkit-site/) · [source](https://github.com/mikemoulder/swarmkit-site) | Read the quickstart, SDK reference, and agent guide. |
-| [SwarmKit Market](https://mikemoulder.github.io/swarmkit-market/) · [source](https://github.com/mikemoulder/swarmkit-market) | Clear an inference-credit market, resume settlement, and see the next round use updated agent balances and inventory. |
+| [SwarmKit Market](https://mikemoulder.github.io/swarmkit-market/) · [source](https://github.com/mikemoulder/swarmkit-market) | A reference economy with GPU and inference presets, durable simulation, policy inspection, allocation explanations, and settlement recovery. |
 | [llms.txt](https://mikemoulder.github.io/swarmkit-site/llms.txt) | Get a plain-text index and integration guidance. |
 
-To run the dashboard, use `npm ci` and `npm run dev`, then open http://localhost:3000. Choose a scenario and advance through Demand, Commit, Reveal and Clear to inspect the same SDK results in the browser.
+The original minimal dashboard remains in this repository: use `npm ci` and `npm run dev`, then open http://localhost:3000. The standalone Market is the primary reference application. Its browser host uses IndexedDB; its local coordinator uses SQLite. Work income, consumption, production costs and seller quote responses are explicit simulation rules, not real economic activity or forecasts.
 
 ## License
 

@@ -15,7 +15,7 @@
   "scripts": {
     "demo": "node scripts/demo.ts",
     "audit": "node scripts/audit-settlement.ts",
-    "test": "node --test test/market.test.ts",
+    "test": "node --test test/*.test.ts",
     "dev": "next dev",
     "build": "next build",
     "build:sdk": "tsc -p tsconfig.sdk.json && node scripts/package-sdk.mjs",
