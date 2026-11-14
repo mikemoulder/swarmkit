@@ -5,7 +5,8 @@
 <p align="center">
   <a href="https://www.npmjs.com/package/near-swarmkit"><img alt="npm: near-swarmkit" src="https://img.shields.io/npm/v/near-swarmkit?color=1f2de6&labelColor=0b0c0e"></a>
   <a href="#quick-start"><img alt="Node 22.18+" src="https://img.shields.io/badge/node-22.18%2B-eef0f3?labelColor=0b0c0e"></a>
-  <a href="#evidence"><img alt="Testnet payments: 24 final" src="https://img.shields.io/badge/testnet%20payments-24%20final-1f2de6?labelColor=0b0c0e"></a>
+  <a href="#evidence"><img alt="NEAR Intents: settled on mainnet" src="https://img.shields.io/badge/NEAR%20Intents-settled%20on%20mainnet-1f2de6?labelColor=0b0c0e"></a>
+  <a href="#evidence"><img alt="On-chain payments: 25 final" src="https://img.shields.io/badge/on--chain%20payments-25%20final-eef0f3?labelColor=0b0c0e"></a>
   <a href="#performance-and-footprint"><img alt="Runtime dependencies: 0" src="https://img.shields.io/badge/runtime%20dependencies-0-eef0f3?labelColor=0b0c0e"></a>
   <a href="#testing"><img alt="Tests: 32 passing" src="https://img.shields.io/badge/tests-32%20passing-eef0f3?labelColor=0b0c0e"></a>
   <a href="#license"><img alt="License: MIT or Apache-2.0" src="https://img.shields.io/badge/license-MIT%20%2F%20Apache--2.0-eef0f3?labelColor=0b0c0e"></a>
@@ -40,10 +41,10 @@ settlement and repeated economies**, as one dependency-free package of 1,240 lin
 | **What it is** | An SDK: round coordinator, allocation mechanisms, settlement planner, crash-safe settlement runner, NEAR transports, replay and audit |
 | **Who it is for** | Developers building agents that buy or sell compute, data, API credits or services, alone or as a swarm |
 | **Try it now** | [swarmkit-coop.pages.dev](https://swarmkit-coop.pages.dev): your team's agent joins 19 others to buy GPU hours, and *Settle my share* pays you out on NEAR testnet |
-| **On chain** | 24 final NEAR testnet payments, every one independently checked against RPC ([evidence](#evidence)) |
+| **On chain** | A real **NEAR Intents settlement on mainnet** through `intents.near` ([transaction](https://nearblocks.io/txns/DHs7dV52LkYyme7mCpKYx7eBERuJN8ZdZiAyoxybAvPE)), plus 24 final NEAR testnet payments, every one independently checked against RPC ([evidence](#evidence)) |
 | **Guarantees** | Sealed bids by SHA-256 commitment; no buyer over budget; no seller over capacity; a payment is signed at most once, even across crashes ([guarantees](#guarantees-and-trust-boundaries)) |
 | **Footprint** | 0 runtime dependencies · 48 KB of ESM (11 KB gzipped) · a 20-buyer, 5-seller round in about 1.5 ms |
-| **Status** | Alpha, built for the 2026 NEAR Hackathon (AI Swarms). Native testnet settlement is live; the NEAR Intents transport is built and preflighted but has not moved funds ([status](#status-and-roadmap)) |
+| **Status** | Alpha, built for the 2026 NEAR Hackathon (AI Swarms). Native testnet settlement is live from the demo; NEAR Intents settlement has run on mainnet with a small real payment ([status](#status-and-roadmap)) |
 
 ## Contents
 
@@ -445,9 +446,14 @@ The 32-byte nonce embeds the Verifier's `current_salt`, read live. Before anythi
 the relayer, the transport **preflights** the batch with `simulate_intents` and requires
 exactly one executed intent and no invariant violation. Execution is a single `execute_intents`
 call with zero deposit, and reconciliation decodes the finalised call and checks the relayer,
-the receiver, the buyer, the seller, the token, the amount and the memo. A live read-only probe
-(`node scripts/verify-near-intents.mjs`) signs with an unfunded ephemeral key and reaches the
-Verifier's balance check.
+the receiver, the buyer, the seller, the token, the amount and the memo.
+
+**It has settled on mainnet.** A sealed SwarmKit round, one buyer agent buying one GPU hour from a
+seller agent, settled through `intents.near` for 0.001 wNEAR: the signed NEP-413 intent was
+preflighted with `simulate_intents`, journaled, executed by the buyer's relayer, and reconciled by
+the SDK as `confirmed`; the audit matched and the Verifier balances moved by exactly the planned
+amount ([transaction](https://nearblocks.io/txns/DHs7dV52LkYyme7mCpKYx7eBERuJN8ZdZiAyoxybAvPE), [round, plan and receipt](https://swarmkit-coop.pages.dev/intents-mainnet.json)).
+Both agents are NEAR implicit accounts, whose own keys the Verifier recognises without registration.
 
 ## Replay, storage and audit
 
@@ -565,12 +571,13 @@ on-chain commitment log is the natural next step ([roadmap](#status-and-roadmap)
 
 ## Evidence
 
-Every number here can be rechecked against NEAR testnet RPC.
+Every number here can be rechecked against NEAR RPC.
 
 | Run | Agents | Payments | Total | How it was checked |
 |---|---|---:|---:|---|
 | GPU round, one winning seller | 20 buyers, 5 sellers, one sub-account each | **20 of 20** final | 0.036 NEAR | Interrupted after the first signed payment was journaled, resumed from the journal, then independently audited ([records](https://swarmkit-coop.pages.dev/gpu-testnet.json), [first transfer](https://testnet.nearblocks.io/txns/9ov59i19duUyDkwcXNn5nTY7vwvJV3cVXpQoRSCeyx4s)) |
 | Split order across two sellers | 1 buyer, 2 sellers | **2 of 2** final | 0.0014 NEAR | Same interruption and audit ([records](https://swarmkit-coop.pages.dev/split-testnet.json), [seller 1](https://testnet.nearblocks.io/txns/5fo7YBXAhgM5Ar7sGEQgohDoQeZHzrwpFJUeVfbLp9fY), [seller 2](https://testnet.nearblocks.io/txns/45diCCuBhfCzxMrbJUxfNwagrQa8ntkmgw63cKQ4S5Di)) |
+| **NEAR Intents on mainnet** | 1 buyer agent, 1 seller agent (implicit accounts) | **1 of 1** final | 0.001 wNEAR | Preflighted with `simulate_intents`, executed via `execute_intents`, reconciled by the SDK as `confirmed`, audit matched; Verifier balances 0.01 → 0.009 and 0 → 0.001 ([transaction](https://nearblocks.io/txns/DHs7dV52LkYyme7mCpKYx7eBERuJN8ZdZiAyoxybAvPE), [records](https://swarmkit-coop.pages.dev/intents-mainnet.json)) |
 | Live co-op, settled from the public page | your team → a provider | **2** final | 0.0147 NEAR | The same request sent twice returned one transaction ([idempotency check](https://testnet.nearblocks.io/txns/HNTQrBPj7YrAeZSinCncvtUrP8i7RAoSyDRF5GhLLTos), [page click](https://testnet.nearblocks.io/txns/Dkj33b1AGH72ixhvxTTbXjHfKH7Z5cNV78F2xbXAt2GY)) |
 
 The 20-buyer round, bid by bid. Twenty buyers pool 90 GPU hours, each capped at 7 credits an
@@ -611,7 +618,7 @@ The coordinator is never the bottleneck; NEAR finality is.
 |---|---:|---|
 | Core SDK (`npm test`) | 15 | A deterministic GPU round paying exact shares within caps; immutable commitments, correctable mismatched reveals and account-ID tie-breaks; split fulfilment under a cumulative signed cap; a stored round surviving restart and detecting conflicting writes; an ambiguous broadcast resumed from the journal **without signing a replacement**; buyer signatures gating amount, transport and expiry; audit separating claims from observed receipts and rejecting reused hashes; Intents preflight before signing and exact reconciliation; one distinct key per sub-account; checkpointed async strategies; credential-derived identities in the agent service |
 | Market (`swarmkit-market`) | 17 | A child process **killed right after a broadcast is recorded** recovers without paying twice; 12 rounds conserve every credit and unit; the co-op never exceeds a budget and fills every served team exactly; outages release the lowest budgets and the market recovers; every week replays from its SDK transcript to the same allocation |
-| On chain | 24 payments | Interrupted-and-resumed testnet settlement, then independent RPC audit; live settlement from the public page with an idempotency check |
+| On chain | 25 payments | Interrupted-and-resumed testnet settlement, then independent RPC audit; live settlement from the public page with an idempotency check; a NEAR Intents settlement on mainnet reconciled and audited by the SDK |
 
 ## API reference
 
@@ -657,13 +664,13 @@ audited. Use testnet.
 
 - **Real and tested:** everything in [Evidence](#evidence) and [Testing](#testing). Native
   NEAR testnet settlement runs live, including from the public demo.
-- **Built, not yet run with funds:** the NEAR Intents transport. Its payloads, preflight and
-  reconciliation are tested against recorded RPC responses and a live read-only probe reaches
-  the Verifier's balance check, but no Intents transfer is part of the evidence.
+- **NEAR Intents:** settled on mainnet once, with a deliberately small real payment (0.001
+  wNEAR) between two agent accounts, and verified end to end. The demo's interactive settle
+  button uses native testnet transfers, because no Intents Verifier is deployed on testnet.
 - **Known limitations:** the coordinator is a trusted off-chain service; settlement is per
   buyer, not atomic across the pool; no refunds or delivery checks; `cheapestCapacity` is a
   greedy heuristic.
-- **Next:** a funded Intents run; an on-chain commitment log
+- **Next:** Intents settlement from the co-op itself for funded agents; an on-chain commitment log
   so anyone can prove a round admitted every bid; more mechanisms (uniform-price and Vickrey
   clearing); Python bindings over the same transcript format.
 
