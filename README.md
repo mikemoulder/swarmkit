@@ -34,6 +34,27 @@ It is the coordination and settlement layer that every multi-agent marketplace o
 rebuilds: **coordination markets, sealed bidding, collective purchasing, intent-based
 settlement and repeated economies**, as one dependency-free package of 1,240 lines.
 
+## SwarmKit Exchange: the same rules, enforced on chain
+
+The SDK's market now runs as a NEAR contract ([`contracts/exchange`](contracts/exchange/src/lib.rs)).
+Buyers escrow wNEAR. Sellers post bonded sealed bids. **The contract clears with the SDK's own
+`cheapest-capacity-v1` rule.** It pays sellers only for delivered units, refunds what was not delivered,
+and gives a no-show or short-delivering seller's bond to the buyers it failed. Work rounds add a
+three-reviewer panel: two approvals pay the worker, two rejections refund the poster and slash the bond.
+
+| Check | Do | See |
+|---|---|---|
+| Contract equals the SDK | `cd contracts/exchange && cargo test` | **23 passed**, including `contract_clearing_equals_the_sdk_on_2000_seeded_rounds` (fixtures: `node scripts/differential-fixtures.ts`) |
+| Live round, real inference | `node scripts/verify-exchange.mjs exchange.swarmx-6653d3dd2c.testnet` in [swarmkit-market](https://github.com/mikemoulder/swarmkit-market) | **30/30 checks from public RPC.** The on-chain allocation equals the SDK's. 10 buyers, 5 sellers (one never revealed, one delivered half). 16 delivered units, each a NEAR AI Cloud TEE completion with its signature ([evidence](https://github.com/mikemoulder/swarmkit-market/blob/main/public/exchange-testnet.json)). The contract has no keys |
+| Mainnet Proof of Round + Intents | `node scripts/mainnet-proof.mjs --verify` in swarmkit-market | **9/9.** Each seller anchored its bid commitment on mainnet from its own account before "sealed". No anchored bid is missing from the transcript. Four buyer-signed payments are final through `execute_intents` on `intents.near` ([1](https://nearblocks.io/txns/GAp51kiGAaJZXuuHjFrCB4tTxPAJj3YRgJNWPH5Uh6B6) · [2](https://nearblocks.io/txns/HkMXUA49FdBC4bSwUHAsfkqF1ACWo7anvzQs7dtksuZk) · [3](https://nearblocks.io/txns/J4G44a3nzwh8CexzcFDh8Xqqms9rHdPdJ8M6ZhKZkb3K) · [4](https://nearblocks.io/txns/J7no2zn7yudvfGnQvTS2ffArRrLU8QckHZCyhdFrDF3h)) |
+| Any agent can join | `claude mcp add swarmkit -- node mcp/server.mjs` in swarmkit-market | Tools to list rounds, seal a bid and act in a round. Without a key it returns the exact call to sign |
+
+**What is real and what is not.**
+- **On-chain:** the exchange contracts run on testnet, the anchor and the Intents settlement run on mainnet, and the inference is real.
+- **Small:** the mainnet amounts are small (0.0034 wNEAR across four payments).
+- **Hand-built anchor contract:** the 478-byte anchor contract was written by hand ([`contracts/anchor/build.mjs`](contracts/anchor/build.mjs)) and exercised on a real NEAR VM.
+- **Trusted delivery confirmation:** delivery is confirmed by the buyer (or the review panel). The contract stores receipt hashes, while TEE signatures are checked off chain.
+
 ## At a glance
 
 | | |
