@@ -120,13 +120,15 @@ of 7 credits an hour. Five sellers bid:
 The pool clears at 4 credits an hour, 360 in total, and each buyer pays only its own hours.
 Run it yourself with `npm run demo`.
 
-**3. Pooling is cheaper, and the market shows by how much.** In the
-[Market demo](https://mikemoulder.github.io/swarmkit-market/)'s GPU cooperative, the first
+**3. Two markets, one economy.** In the [live economy](https://mikemoulder.github.io/swarmkit-market/), inference providers buy GPU hours in one SwarmKit market and sell inference in another. A four-round GPU supply shock lifts the GPU price, then provider cost, then the inference price, purely through the agents' own decisions; a test asserts that path, exact cash conservation, and that every round replays from its SDK transcript.
+
+**4. Pooling is cheaper, and the market shows by how much.** In the
+[recovery lab](https://mikemoulder.github.io/swarmkit-market/lab.html)'s GPU cooperative, the first
 round buys 59 hours for **177 credits pooled, against 236** if each buyer had bought alone
 from the same sellers at their solo quotes. The comparison is computed per round; if pooled
 demand cannot be filled, it reports no saving rather than assuming one.
 
-**4. Tests that kill the process.** The core SDK has 15 tests and the market 8. The market's
+**5. Tests that kill the process.** The core SDK has 15 tests and the market 12. The market's
 restart test kills a child process immediately after a payment broadcast is recorded, starts
 a new one, and checks that it recovers the same payment without signing again or applying it
 to the ledger twice. Others cover a twelve-round economy that conserves every credit and unit
@@ -306,7 +308,7 @@ SwarmKit is **alpha**: built for the 2026 NEAR Hackathon (AI Swarms track), test
 audited. Use testnet.
 
 - **Real and tested:** everything above. Rounds, allocation, replay and settlement run in 15
-  core tests and 8 market tests; native testnet settlement in the 22 audited payments listed
+  core tests and 12 market tests; native testnet settlement in the 22 audited payments listed
   above.
 - **Built, not yet run with funds:** the NEAR Intents transport. A live read-only probe signs
   a NEP-413 transfer with an unfunded key and reaches the Verifier's balance check
@@ -323,7 +325,7 @@ audited. Use testnet.
 | Project | What it is |
 |---|---|
 | [**Website and docs**](https://mikemoulder.github.io/swarmkit-site/) ([source](https://github.com/mikemoulder/swarmkit-site)) | Quick start, guides, generated API reference, and a panel that runs the SDK in the page |
-| [**SwarmKit Market**](https://mikemoulder.github.io/swarmkit-market/) ([source](https://github.com/mikemoulder/swarmkit-market)) | A running agent economy: GPU and inference presets, editable agent policies, round-by-round prices, pooled-versus-solo cost, and settlement that survives a reload |
+| [**SwarmKit Market**](https://mikemoulder.github.io/swarmkit-market/) ([source](https://github.com/mikemoulder/swarmkit-market)) | 19 agents across two linked markets: GPU sellers, labs, inference providers and apps, each with its own strategy and stated reasons. Cut the GPU supply and watch the shock reach inference prices. Plus a recovery lab that breaks settlements on purpose |
 | [**llms.txt**](https://mikemoulder.github.io/swarmkit-site/llms.txt) · [**llms-full.txt**](https://mikemoulder.github.io/swarmkit-site/llms-full.txt) | The docs as plain text for language models and coding agents |
 | [**Agent HTTP service**](examples/agent-service.mjs) | Agents submit commands over HTTP; identity comes from the credential, not the request |
 | [**SQLite round store**](examples/sqlite-round-store.mjs) | A durable coordinator that survives restarts, with compare-and-set writes |
