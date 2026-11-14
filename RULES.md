@@ -1,0 +1,27 @@
+# SwarmKit market rules
+
+One round buys whole hours of a single GPU model under a fixed delivery window. The demo uses 20 scripted buyers and five scripted sellers. GPU inventory and delivery are simulated. Prices and budget caps are integers in the smallest unit of the round's single payment asset.
+
+1. **Collect demand.** Each registered buyer submits one positive quantity and a maximum total spend. Buyers can replace or withdraw their requests until demand closes. The coordinator then freezes the roster, total quantity, asset and deadlines. Empty demand closes the round without a purchase.
+2. **Commit.** Each registered seller can submit one immutable SHA-256 commitment during the commit window. Hash the UTF-8 JSON array `["swarmkit-bid-v1", roundId, sellerId, capacity, unitPrice, salt]`. IDs and all bid fields are strings. Capacity and price use canonical positive decimal strings, and the salt is 32 random bytes encoded as lowercase hex. Use a seeded salt only in simulation. The public view shows commitments until the reveal window opens.
+3. **Reveal.** Accept reveals only after commit closes and before the reveal deadline. The authenticated seller ID must match the commitment. Ignore late, missing, malformed or mismatched reveals. A malformed or mismatched attempt does not consume the seller's chance to reveal correctly before the deadline. The coordinator uses half-open windows, so a submission at the closing timestamp is late.
+4. **Clear.** After reveal closes, consider only bids that can fill the full pool and keep every buyer at or below their cap. Lowest unit price wins, with ties broken by ascending ASCII account ID. Each buyer owes their requested quantity multiplied by the winning unit price. The seller is owed the sum. A round with no qualifying bid ends with no allocation or payment. After demand closes, a change to quantity or budget requires a new round.
+5. **Settle.** Freeze the allocation before requesting payment. Fixture mode posts simulated receipts. The testnet design uses one native NEAR transfer per buyer to the winning seller, using test funds and explicit operator authorization. Record each payment under a stable round and buyer ID. Prepare and persist the signed transaction and its hash before broadcasting. If the response is ambiguous, reconcile by hash before considering a replacement. Display confirmed, pending, and failed payments individually. The round is paid only when all shares are confirmed. Confirmed transfers are irreversible through SwarmKit. Partial payment stays visible and any refund would require a separate seller-authorized transfer. An unfilled round creates no payments and needs no refunds.
+
+For example, two buyers request 3 and 2 hours. At a clearing price of 4 units per hour they pay 12 and 8. A 3-unit bid with capacity for only 4 hours is ineligible. If either buyer's cap is below their share at 4 units and no other bid qualifies, nobody pays.
+
+The coordinator enforces auction rules off-chain. Commitments bind sellers to their bids but do not independently prove that the coordinator accepted all submissions or applied the rules correctly. A round transcript lets a reader recompute the result from the recorded inputs.
+
+## Split fulfillment
+
+The opt-in cheapest-capacity-v1 mechanism orders buyers by budget per unit, tightest first, then draws from sellers in ascending price order (ASCII IDs break ties). It must fill all admitted demand within every buyer budget and seller capacity. It is a greedy heuristic, not an optimal solver. Custom allocation plugins return unique buyer/seller quantity lines; the coordinator validates them and computes charges at seller bid prices. Split payment IDs include round, buyer and seller and require an atomic journal plan binding.
+
+## Ongoing reference economy
+
+The standalone Market uses renewable GPU capacity (20 buyers, 5 sellers) or inference capacity (8 buyers, 4 sellers). These are simulated resources and credits. Before demand collection, an operator may configure buyer quantity/unit cap or seller base price. Those inputs freeze for the round.
+
+Sellers offer current inventory. Pools of at least 20 units receive a 1-credit unit discount, bounded by the seller's floor. Buyer demand is capped by current balance. After settlement, buyers consume purchased units and receive 8 credits per unit from explicitly modeled external work. Sellers replenish up to 70% of nameplate capacity, within inventory space and cash, at a cost of 1 credit per unit. Sellers raise their base quote by 1 after over 85% utilization and lower it by 1 below 40%, bounded by the floor and the scenario ceiling. Income, production expenses, consumed units and produced units are separately accounted.
+
+The solo comparison uses opening inventory and budgets in the same buyer order, applies each seller's quote to each individual purchase, and decrements inventory between buyers. It reports no savings if it cannot fill all demand. This is a defined counterfactual, not a globally optimal baseline or a claim that pooling always saves money.
+
+The browser persists private simulation checkpoints and journals in IndexedDB. The local coordinator persists them in SQLite. Each confirmed payment affects the application ledger once, keyed by payment ID. An interrupted acknowledgement or restricted synthetic approval pauses the workflow until explicit recovery. Recorded testnet transfers are separate evidence; simulation IDs and credits must never be relabeled as real assets for execution.

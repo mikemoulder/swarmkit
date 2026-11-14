@@ -1,132 +1,363 @@
-# SwarmKit
+<p align="center">
+  <a href="https://mikemoulder.github.io/swarmkit-site/"><img src="assets/readme-banner.png" alt="SwarmKit: agent markets on NEAR. Pooled, sealed, settled and audited. 20 of 20 testnet payments final in one GPU round; 177 versus 236 credits for 59 GPU hours, pooled against bought solo; 0 payments re-signed after a crash mid-settlement." width="100%"></a>
+</p>
 
-[Website](https://mikemoulder.github.io/swarmkit-site/) · [Docs](https://mikemoulder.github.io/swarmkit-site/docs/) · [Agent guide](https://mikemoulder.github.io/swarmkit-site/agents/) · [Market demo](https://mikemoulder.github.io/swarmkit-market/) · [Testnet evidence](#settlement-evidence)
+<p align="center">
+  <a href="https://mikemoulder.github.io/swarmkit-site/docs/"><img alt="near-swarmkit 0.1.0" src="https://img.shields.io/badge/near--swarmkit-0.1.0-1f2de6?labelColor=0b0c0e"></a>
+  <a href="#quick-start"><img alt="Node 22.18+" src="https://img.shields.io/badge/node-22.18%2B-eef0f3?labelColor=0b0c0e"></a>
+  <a href="#proof-that-it-settles"><img alt="Testnet payments: 22 of 22 final" src="https://img.shields.io/badge/testnet%20payments-22%2F22%20final-1f2de6?labelColor=0b0c0e"></a>
+  <a href="#proof-that-it-settles"><img alt="Runtime dependencies: 0" src="https://img.shields.io/badge/runtime%20dependencies-0-eef0f3?labelColor=0b0c0e"></a>
+  <a href="#license"><img alt="License: MIT or Apache-2.0" src="https://img.shields.io/badge/license-MIT%20%2F%20Apache--2.0-eef0f3?labelColor=0b0c0e"></a>
+</p>
 
-**SwarmKit is a TypeScript SDK for agent procurement on NEAR.** Buyer agents pool demand, seller agents compete in sealed-bid rounds, and the SDK turns the resulting allocation into a payment plan that can be replayed, resumed, and audited.
+<p align="center">
+  <a href="https://mikemoulder.github.io/swarmkit-site/"><b>Website</b></a> ·
+  <a href="https://mikemoulder.github.io/swarmkit-site/docs/">Docs</a> ·
+  <a href="https://mikemoulder.github.io/swarmkit-market/">Market demo</a> ·
+  <a href="https://mikemoulder.github.io/swarmkit-site/reference/">API reference</a> ·
+  <a href="RULES.md">Market rules</a> ·
+  <a href="https://mikemoulder.github.io/swarmkit-site/llms.txt">llms.txt</a>
+</p>
 
-[![SwarmKit Market showing a settled split order](assets/market.png)](https://mikemoulder.github.io/swarmkit-market/)
+---
 
-## The coordination problem
+**SwarmKit lets independent AI agents buy together on NEAR.** Buyer agents pool their
+demand, seller agents bid in a sealed round, and the SDK turns the winning allocation into
+one exact payment per buyer, signed, journaled and checked against the chain. A round can be
+replayed from its record, and a settlement interrupted by a crash resumes without paying
+anyone twice.
 
-An agent that buys inference, data, or compute needs a spending limit and a way to compare offers. A group of agents also needs common deadlines, an allocation rule, and an account of who owes what. SwarmKit gives applications those pieces as reusable TypeScript interfaces.
+## The problem
 
-## Quickstart
+Agents are starting to spend money: on inference, GPU hours, data and each other's
+services. One agent buying alone pays the solo price. A group of agents could pool demand
+and make sellers compete, but only if something answers the hard questions for them:
 
-Use Node 22.18 or newer. Build the standalone ESM tarball from this repository and install it in a separate project.
+- **Who is in, and when does bidding stop?** A round needs deadlines, a participant list and
+  rules every agent can check.
+- **Can sellers see each other's prices?** If they can, the auction is not sealed and the
+  cheapest seller has no reason to stay cheap.
+- **Who owes what?** One pooled purchase becomes twenty separate payments, each within that
+  buyer's own budget.
+- **What if the process dies mid-payment?** A coordinator that crashes after signing a
+  transfer but before recording it will, on restart, either pay again or lose track of money
+  already sent.
 
-```sh
+Every team building a multi-agent economy on NEAR rewrites these pieces from scratch, and the
+last one is where real funds get lost.
+
+## The solution
+
+**SwarmKit is the coordination and settlement layer as a TypeScript SDK.** You write the
+agents' strategies; SwarmKit runs the market and pays out.
+
+```js
+import { simulateProcurement } from "near-swarmkit";
+
+const { stages, plan } = await simulateProcurement({
+  seed: 42,
+  spec: {
+    id: "inference-credits-01",
+    resource: { label: "Inference credits", unit: "credit", deliveryWindow: "Today" },
+    asset: "demo-credits",
+    demandCloses: 10, commitCloses: 20, revealCloses: 30,
+  },
+  buyers: [
+    { id: "research", demand: () => ({ quantity: "3", budget: "15" }) },  // 3 credits, spend at most 15
+    { id: "indexer",  demand: () => ({ quantity: "2", budget: "10" }) },
+  ],
+  sellers: [
+    { id: "fastlane",  offer: () => ({ capacity: "4", unitPrice: "3" }) }, // cheaper, but too small
+    { id: "northstar", offer: () => ({ capacity: "5", unitPrice: "4" }) },
+  ],
+});
+
+console.log(stages.at(-1).allocation.sellerId);                    // "northstar"
+console.log(plan.payments.map(p => [p.buyerId, p.amount]));         // [["research","12"],["indexer","8"]]
+```
+
+- **Sealed-bid rounds.** Sellers commit a SHA-256 hash of their bid, then reveal it after the
+  commit deadline. A reveal that does not match its hash is rejected.
+- **Allocation within every constraint.** Buyer budgets and seller capacity are enforced
+  before any rule runs. Pick the cheapest single seller, split one order across several, or
+  plug in your own versioned rule.
+- **Settlement that survives a crash.** Every payment is signed and journaled before it is
+  sent. On restart the runner checks the stored transaction hash instead of signing again.
+- **Spending limits the agent cannot raise.** Each buyer signs an Ed25519 policy: asset,
+  sellers, maximum amount, expiry. A payment outside it is refused before it is built.
+- **NEAR native.** One sub-account per agent, native testnet transfers verified to finality,
+  and a NEAR Intents transport that signs NEP-413 transfers and preflights them against the
+  Verifier.
+- **No LLM required.** A strategy is an async function. Scripted ones replay exactly from a
+  seed; a language model can sit behind the same function.
+
+## Proof that it settles
+
+**1. Real payments on NEAR testnet, audited.** Two fresh runs on 14 November 2026, each from
+newly created, faucet-funded sub-accounts (one per agent). Both runs were stopped on purpose
+right after the first signed payment was journaled, then resumed from the journal.
+
+| Run | Agents | Payments | Total | Evidence |
+|---|---|---:|---:|---|
+| GPU round, one winning seller | 20 buyers, 5 sellers | **20 of 20** final | 0.036 NEAR | [Round, plan and receipts](https://mikemoulder.github.io/swarmkit-market/gpu-testnet.json) · [first transfer](https://testnet.nearblocks.io/txns/9ov59i19duUyDkwcXNn5nTY7vwvJV3cVXpQoRSCeyx4s) |
+| Split order across two sellers | 1 buyer, 2 sellers | **2 of 2** final | 0.0014 NEAR | [Round, plan and receipts](https://mikemoulder.github.io/swarmkit-market/split-testnet.json) · [seller 1](https://testnet.nearblocks.io/txns/5fo7YBXAhgM5Ar7sGEQgohDoQeZHzrwpFJUeVfbLp9fY) · [seller 2](https://testnet.nearblocks.io/txns/45diCCuBhfCzxMrbJUxfNwagrQa8ntkmgw63cKQ4S5Di) |
+
+A separate, read-only audit replayed each round from its transcript and matched all 22
+receipts against testnet RPC: sender, recipient, amount and status. The evidence files hold
+no keys and no signed transaction bytes.
+
+**2. The 20-buyer GPU round, step by step.** 20 buyers pool 90 GPU hours, each with a cap
+of 7 credits an hour. Five sellers bid:
+
+| Seller | Price | Hours | Outcome |
+|---|---:|---:|---|
+| seller-1 | 2 | 89 | Rejected: one hour short of the pool |
+| seller-2 | **4** | 90 | **Winner** |
+| seller-3 | 6 | 90 | Eligible, more expensive |
+| seller-4 | 8 | 90 | Rejected: above every buyer's cap |
+| seller-5 | 10 | 90 | Rejected: above every buyer's cap |
+
+The pool clears at 4 credits an hour, 360 in total, and each buyer pays only its own hours.
+Run it yourself with `npm run demo`.
+
+**3. Pooling is cheaper, and the market shows by how much.** In the
+[Market demo](https://mikemoulder.github.io/swarmkit-market/)'s GPU cooperative, the first
+round buys 59 hours for **177 credits pooled, against 236** if each buyer had bought alone
+from the same sellers at their solo quotes. The comparison is computed per round; if pooled
+demand cannot be filled, it reports no saving rather than assuming one.
+
+**4. Tests that kill the process.** The core SDK has 15 tests and the market 8. The market's
+restart test kills a child process immediately after a payment broadcast is recorded, starts
+a new one, and checks that it recovers the same payment without signing again or applying it
+to the ledger twice. Others cover a twelve-round economy that conserves every credit and unit
+of inventory, stale writes rejected by revision, and buyer-signed caps gating a whole
+allocation.
+
+## Quick start
+
+```bash
+git clone https://github.com/mikemoulder/swarmkit && cd swarmkit
 npm ci
+npm run demo        # the 20-buyer, 5-seller GPU round
+npm test            # 15 tests
+```
+
+Use Node 22.18 or newer. To use the SDK in your own project, build the package and install
+the tarball (npm publication is pending):
+
+```bash
 npm run pack:sdk
-# In your project:
-npm install /path/to/near-swarmkit-0.1.0.tgz
-node node_modules/near-swarmkit/examples/split-market.mjs
+cd ../your-project && npm install ../swarmkit/dist/near-swarmkit-0.1.0.tgz
 ```
 
-The package includes JavaScript, TypeScript declarations, runnable market examples, SQLite and authenticated-agent service recipes, and both licenses. Its SDK runtime has zero dependencies. The [quickstart](https://mikemoulder.github.io/swarmkit-site/docs/) includes a complete two-buyer market you can adapt.
+The package carries JavaScript, TypeScript declarations, runnable examples and both licences,
+with no runtime dependencies.
 
-From the core repository, run the built-in scenarios and checks.
+<details>
+<summary><b>Run a round step by step and resume it after a restart</b></summary>
 
-```sh
-npm run demo
-npm run demo -- api-credits
-npm run demo -- no-sale
-npm test
+```js
+import { startSimulation, advanceSimulation, replayRound } from "near-swarmkit";
+
+let session = startSimulation(agents);
+session = await advanceSimulation(session, agents);   // demand, then commit, reveal, close
+await save(JSON.stringify(session));                  // private: holds unrevealed bids
+// ...after a restart
+session = await advanceSimulation(JSON.parse(await load()), agents);
+const snapshot = await replayRound(session.transcript);
 ```
 
-The GPU run pools 90 hours across 20 buyers. The cheapest bid has only 89 hours, so the next eligible seller clears at four credits per hour. The API-credit and dataset-seat examples reuse the coordinator with different resources and strategies. These scenarios use simulated accounts and receipts.
+Each call runs exactly one stage, so a crash costs at most the stage in progress.
+[`examples/incremental-market.mjs`](examples/incremental-market.mjs) runs it end to end.
+</details>
+
+<details>
+<summary><b>Split one order across several sellers</b></summary>
+
+```js
+import { cheapestCapacity, createRound } from "near-swarmkit";
+
+const round = createRound({ ...spec, mechanismId: cheapestCapacity.id });
+```
+
+The tightest budgets are served first, from the cheapest sellers up. Each buyer and seller
+pair gets its own payment ID. [`examples/split-market.mjs`](examples/split-market.mjs).
+</details>
+
+<details>
+<summary><b>Write your own allocation rule</b></summary>
+
+```js
+const mostCapacity = {
+  id: "capacity-first-v1",
+  selectWinner: offers => [...offers].sort((a, b) =>
+    Number(BigInt(b.capacity) - BigInt(a.capacity)))[0]?.sellerId ?? null,
+};
+const round = createRound({ ...spec, mechanismId: mostCapacity.id }, Date.now, mostCapacity);
+```
+
+The SDK filters out offers that break a budget or lack capacity before your rule runs, and
+computes every charge itself. Replay and audit take the same rule, pinned by its ID.
+</details>
+
+<details>
+<summary><b>Pay on NEAR testnet, within limits each buyer signed</b></summary>
+
+```js
+import { executeWithSpendingPolicies, nearTestnetTransport, spendingPolicyMessage } from "near-swarmkit";
+
+const transport = nearTestnetTransport(signPayment);  // your signer builds exactly this transfer
+const policy = {
+  roundId: plan.roundId, buyerId, asset: plan.asset, transportScope: transport.scope,
+  sellers: ["seller-2.example.testnet"], maxAmount: "4000000000000000000000",  // 0.004 NEAR
+  expiresAt: Date.now() + 10 * 60_000,
+};
+const signature = new Uint8Array(
+  await crypto.subtle.sign("Ed25519", buyerPrivateKey, spendingPolicyMessage(policy)));
+
+await executeWithSpendingPolicies(plan, {
+  transport, journal, approvals: [{ policy, signature }], resolveBuyerKey,
+});
+```
+
+The policy is checked before each payment is prepared and again before it is broadcast. The
+journal must be durable and kept private: it holds signed transactions.
+[`examples/testnet-settlement.mjs`](examples/testnet-settlement.mjs) runs the whole flow from
+faucet-funded accounts; add `--gpu` or `--split` for the runs above.
+</details>
+
+<details>
+<summary><b>Audit a finished round</b></summary>
+
+```bash
+npm run audit -- evidence.json --verify-testnet
+```
+
+Replays the transcript, recomputes the payment plan and checks each receipt against testnet
+RPC. It exits non-zero if any observed status differs from the claim.
+</details>
+
+## Features
+
+| | What it does | Guarantee |
+|---|---|---|
+| **Rounds** | `createRound`, `commitBid` | Half-open deadlines for demand, commit and reveal; a clock that never moves backwards |
+| **Allocation** | `lowestPrice`, `cheapestCapacity`, custom `ProcurementMechanism` | Every buyer within budget, every seller within capacity, all demand filled or no sale |
+| **Simulation** | `simulateProcurement`, `startSimulation`, `advanceSimulation` | Seeded and deterministic; one stage per call; resumable from a checkpoint |
+| **Explanations** | `explainAllocation` | Each buyer's spend and unused budget, each seller's allocation or rejection reason |
+| **Replay** | `round.transcript()`, `replayRound`, `resumeRound` | The same transcript and rule always produce the same allocation |
+| **Storage** | `openStoredRound`, `submitStoredRoundEvent`, `RoundStore` | Compare-and-set by revision, so two writers cannot both win |
+| **Settlement plan** | `createSettlementPlan`, `settlementPlanFromTranscript` | Exact integer amounts, one stable ID per payment |
+| **Settlement runner** | `executeSettlement` | Signed and journaled before broadcast; resumed by hash, never re-signed |
+| **Spending policies** | `executeWithSpendingPolicies`, `spendingPolicyMessage` | Buyer-signed Ed25519 caps on asset, sellers, amount and expiry |
+| **NEAR** | `planNearSubaccounts`, `nearTestnetTransport`, `nearIntentsTransport` | One sub-account per agent; transfers verified at finality |
+| **Audit** | `auditSettlement` | Claimed against observed receipt status, with reused hashes rejected |
+
+Full reference, generated from the package's declarations:
+[mikemoulder.github.io/swarmkit-site/reference](https://mikemoulder.github.io/swarmkit-site/reference/).
+
+## What SwarmKit refuses to do
+
+Each one is rejected before any money moves: round submissions return `false`, and everything
+after the close throws an error.
+
+| Refused | Why |
+|---|---|
+| A reveal that does not match its commitment | The bid would no longer be sealed |
+| Demand, commitments or reveals outside their window | Late information could change the outcome |
+| An allocation over a buyer's budget or a seller's capacity | Checked again after any custom rule runs |
+| Settling a round that has not closed | Payments come only from a final allocation |
+| Signing a payment the journal already holds | The stored transaction is reconciled instead |
+| A payment that differs from the journal under the same ID | Would hide a changed amount or recipient |
+| A split plan that differs from the one bound to the journal | The schedule is locked across retries |
+| A payment outside the buyer's signed policy | Spending caps belong to the buyer, not the agent |
+| Replaying a round with a different rule than recorded | The result would not be reproducible |
 
 ## How it works
 
-```mermaid
-flowchart LR
-  Agents[Buyer demand and seller commitments] --> Round[Coordinator and clearing rule]
-  Round --> Transcript[Versioned round transcript]
-  Transcript --> Plan[Replay and payment plan]
-  Plan --> Runner[Authorization and settlement journal]
-  Runner --> Near[NEAR testnet or Intents Verifier]
-  Near --> Audit[Receipt reconciliation]
+```text
+your agents: async buyer and seller strategies
+      │  demand + spend cap · sealed bid (hash, then reveal)
+      ▼
+coordinator: createRound                                     src/swarm/round.ts
+      │  deadlines, membership, commitment checks, versioned transcript
+      ▼
+allocation rule: lowestPrice · cheapestCapacity · yours      src/swarm/mechanism.ts
+      │  budgets and capacity enforced around the rule
+      ▼
+settlement plan: one exact payment per buyer and seller      src/swarm/settlement.ts
+      │  Ed25519 spending policies signed by each buyer      src/swarm/spending-policy.ts
+      ▼
+settlement runner: sign → journal → send → confirm           src/swarm/execute.ts
+      │
+      ├── native NEAR testnet transfers                      src/swarm/near-testnet.ts
+      └── NEAR Intents Verifier (NEP-413)                    src/swarm/near-intents-transport.ts
+      ▼
+audit: replay the transcript, check receipts against RPC     src/swarm/audit.ts
 ```
 
-| SDK API | Responsibility |
+The coordinator runs off-chain, in your service. Your application authenticates agents and
+holds the signing keys; SwarmKit never sees a private key. The economic rules are written down
+in [RULES.md](RULES.md) and the boundaries in [ARCHITECTURE.md](ARCHITECTURE.md).
+
+## Status
+
+SwarmKit is **alpha**: built for the 2026 NEAR Hackathon (AI Swarms track), tested hard, not
+audited. Use testnet.
+
+- **Real and tested:** everything above. Rounds, allocation, replay and settlement run in 15
+  core tests and 8 market tests; native testnet settlement in the 22 audited payments listed
+  above.
+- **Built, not yet run with funds:** the NEAR Intents transport. A live read-only probe signs
+  a NEP-413 transfer with an unfunded key and reaches the Verifier's balance check
+  (`node scripts/verify-near-intents.mjs`); its settlement path is tested against recorded
+  RPC responses. No Intents transfer is part of the evidence above.
+- **Known limitations:** the coordinator is a trusted off-chain service, and replay proves a
+  transcript is consistent, not that it is complete. Settlement is per buyer, not atomic
+  across the pool, and there are no refunds or delivery checks. The market demo's economy uses
+  simulated credits; its payments are not on chain.
+- **npm:** `near-swarmkit` is packaged and passes a publish dry run, but is not yet published.
+
+## The SwarmKit ecosystem
+
+| Project | What it is |
 |---|---|
-| `createRound`, `commitBid` | Run sealed-bid procurement with your own participants, deadlines and clock. |
-| `simulateProcurement` | Run deterministic buyer and seller strategies against the real coordinator, with a snapshot at each stage. |
-| `startSimulation`, `advanceSimulation` | Execute asynchronous policies one stage at a time and resume from a private serialized checkpoint. |
-| `explainAllocation` | Inspect charges, unused buyer budgets and seller outcomes from a closed round. |
-| `createSettlementPlan` | Convert a closed allocation into exact, individually identified buyer payments. |
-| `summarizeSettlement` | Reconcile pending, confirmed and failed amounts from per-payment receipts. |
-| `replayRound`, `settlementPlanFromTranscript` | Recompute the outcome and payments from a versioned record of accepted inputs. |
-| `openStoredRound`, `submitStoredRoundEvent` | Persist a round and its accepted commands through an application-provided atomic store. |
-| `executeWithSpendingPolicies`, `auditSettlement` | Enforce buyer-signed approvals and reconcile settlement receipts against the recorded round. |
+| [**Website and docs**](https://mikemoulder.github.io/swarmkit-site/) ([source](https://github.com/mikemoulder/swarmkit-site)) | Quick start, guides, generated API reference, and a panel that runs the SDK in the page |
+| [**SwarmKit Market**](https://mikemoulder.github.io/swarmkit-market/) ([source](https://github.com/mikemoulder/swarmkit-market)) | A running agent economy: GPU and inference presets, editable agent policies, round-by-round prices, pooled-versus-solo cost, and settlement that survives a reload |
+| [**llms.txt**](https://mikemoulder.github.io/swarmkit-site/llms.txt) · [**llms-full.txt**](https://mikemoulder.github.io/swarmkit-site/llms-full.txt) | The docs as plain text for language models and coding agents |
+| [**Agent HTTP service**](examples/agent-service.mjs) | Agents submit commands over HTTP; identity comes from the credential, not the request |
+| [**SQLite round store**](examples/sqlite-round-store.mjs) | A durable coordinator that survives restarts, with compare-and-set writes |
 
-### Round recovery and replay
+[![SwarmKit Market after a settled split order](assets/market.png)](https://mikemoulder.github.io/swarmkit-market/)
 
-For split fulfillment, set `RoundSpec.mechanismId` to `cheapestCapacity.id`. The built-in rule serves the tightest budget per unit first and draws from sellers in ascending price order. It is a deterministic heuristic. If the order cannot be filled under that rule, the round makes no allocation. Custom mechanisms may implement `allocate(buyers, offers)` and return buyer, seller and quantity lines. The coordinator applies seller bid prices and validates complete demand, seller capacity, and total spend per buyer.
+## Develop
 
-Split rounds expose `splitAllocation` and generate version 2 settlement plans with one payment ID per buyer and seller pair. Implement `SettlementJournal.bindPlan` as an atomic insert-or-match operation for the entire plan. This locks the payment schedule across retries. The runner waits for a buyer's previous payment to confirm before signing or sending their next one. Signed policies check the buyer's total spend and every seller in their allocation. Transfers can still settle partially. The [split market example](examples/split-market.mjs) can run against the installed SDK tarball.
+```bash
+npm ci
+npm test                 # core tests
+npm run demo -- api-credits     # other scenarios: api-credits, no-sale
+npm run build:sdk        # compile the package into dist/sdk
+npm run dev              # the original minimal dashboard on http://localhost:3000
+```
 
-The default sealed-bid mechanism selects the lowest eligible price. To supply a different winner-selection rule, implement `ProcurementMechanism`, put its versioned ID in `RoundSpec.mechanismId`, and pass the implementation to the coordinator or simulator. The SDK filters offers by capacity and buyer budgets before invoking the rule. The rule can select an eligible seller or return `null`. The SDK still computes all charges at the chosen seller's quoted price.
+The [scripts README](scripts/README.md) lists every script. Working notes for contributors and
+coding agents are in [AGENTS.md](AGENTS.md).
 
-Keep mechanism implementations deterministic and supply the same version when restoring, replaying or deriving payments. The transcript identifies the mechanism by ID. Your application must pin the implementation associated with that ID. The dataset example implements a capacity-first rule and exercises it through SQLite recovery and settlement planning.
+## Prior art
 
-Save `round.transcript()` as JSON and restore the coordinator with `resumeRound(saved, clock)`. A resumed clock must be at or after the saved observation time. Replay checks the recorded order, deadlines, participant eligibility and commitment hashes, then recomputes the allocation. Use `settlementPlanFromTranscript(saved)` to generate payments from a closed round. Store transcripts in trusted storage. Replay verifies internal consistency, while proving the completeness or origin of a transcript requires external evidence.
-
-For persistent coordinators, implement `RoundStore.compareAndSet` as an atomic update keyed by round ID and expected event count. Authenticate callers before submitting their commands. On a revision conflict, re-read and revalidate the command against the current phase before retrying.
-
-Applications supply participant authentication and signing. The simulator generates synthetic receipts. Buyer and seller strategies can return promises. Incremental simulation checkpoints contain unrevealed offers and must remain private; publish the transcript or replayed snapshot instead. Strategies must be free of external side effects because an uncommitted step may run again after a crash.
-
-The [incremental example](examples/incremental-market.mjs) demonstrates stage execution and serialized recovery. The [SQLite RoundStore](examples/sqlite-round-store.mjs) implements atomic compare-and-set. The [agent HTTP service](examples/agent-service.mjs) derives identities from credentials, enforces buyer/seller roles, and submits commands through the stored coordinator. These are integration recipes; applications still own credential management and production hosting.
-
-For NEAR, `planNearSubaccounts(parentId, agents)` prepares create, fund and add-key actions for each direct child. The parent signs each action batch with its NEAR client. Each agent supplies a distinct public key.
-
-For NEAR Intents, pass a closed settlement plan denominated in a Verifier token such as `nep141:wrap.near` to `prepareNearIntentsTransfers` with a short deadline and a fresh salt from `readNearIntentsSalt`. Review the requests before passing them to `signNearIntentsTransfers` with a NEP-413 signer callback. Return the public key and signature in the Verifier's prefixed base58 encoding. The callback must sign the exact message, recipient and nonce supplied for each buyer. Use the resulting arguments with `simulate_intents` before submitting the call from `nearIntentsExecutionCall`. The transaction sender pays gas. The buyers must already hold the token in the Verifier and have signing keys recognized there.
-
-Persist the signed batch and transaction reference before retrying execution. Reconcile an uncertain result before preparing any replacement batch with new nonces. Confirm payments from finalized Verifier execution evidence. The recipient receives a Verifier balance. A separate withdrawal moves it out. [NEAR Intents execution](https://docs.agentsonintents.com/integration/verifier-contract/intent-types-and-execution)
-
-Run `npm run build:sdk` and `node scripts/verify-near-intents.mjs` to check the packaged SDK against the live Verifier. The script uses an ephemeral, unfunded key and expects the read-only simulation to reach the balance check.
-
-### Resumable settlement
-
-`executeSettlement(plan, { transport, journal, authorize })` authorizes each payment and records its signed bytes and hash before broadcast. On resume it checks the stored hash first. A pending payment can rebroadcast only the same bytes. A conflicting amount or recipient under the same payment ID is rejected. The testnet transport checks the finalized sender, recipient, transfer amount, and execution status before marking a payment confirmed. [NEAR transaction RPC](https://docs.near.org/api/rpc/transactions)
-
-Supply a trusted signer that builds exactly the approved transfer and a durable journal with atomic insert-if-absent semantics. Keep the journal private because its entries include broadcastable signed transactions. Use unique round IDs and reconcile an expired transaction before authorizing any replacement outside this runner. Passing an authorization callback that returns false allows receipt reconciliation without sending new transactions.
-
-To run the [testnet example](examples/testnet-settlement.mjs) from a separate project, install the SDK tarball, `near-api-js@7.2.0`, and `@scure/base`. Copy the example there and run `node testnet-settlement.mjs --faucet-testnet`. It uses disposable faucet-funded accounts, stops after writing the first signed transaction, reopens the journal, and checks both buyer payments to finality.
-
-Add `--gpu` to exercise the same workflow with 20 buyers, five sellers and a sealed-bid GPU market. The script emits the round transcript, replayed payment plan and finalized receipt hashes as JSON. The procurement runs in the SDK and payments run on NEAR testnet.
-
-Add `--split` to run one five-hour order against two sellers, resume from the saved payment journal, and audit both finalized testnet transfers. The reference run paid 0.0006 and 0.0008 testnet NEAR. [First transfer](https://testnet.nearblocks.io/txns/AWmQ6oU7nuH1R24R6naPgVzLakArLgnrrZeQnirKkQ6W) · [Second transfer](https://testnet.nearblocks.io/txns/4iRnp5cBHjffijTrEUMqB5uVA4hK7KJdhx3uLF82dZxD)
-
-### Independent settlement checks
-
-Run `npm run audit -- <evidence.json>` to replay the round and summarize the supplied receipt claims offline. Add `--verify-testnet` to check native testnet receipts against NEAR RPC. The report separates claimed and observed payment status, rejects reused transaction hashes, and exits with a failure status when an observed status differs from its claim. For custom clearing rules, call `auditSettlement(transcript, receipts, { mechanism, verifier })` with the pinned rule implementation. The report checks the supplied transcript and receipts. The provenance and completeness of the transcript still depend on the coordinator or external evidence.
-
-### Buyer spending policies
-
-Sign the bytes from `spendingPolicyMessage(policy)` with the buyer's Ed25519 key and pass the policy and signature to `executeWithSpendingPolicies`. Supply a trusted buyer-to-public-key resolver. The signature binds the buyer, round, asset, transport scope, seller allowlist, maximum amount in base units, and expiry in Unix milliseconds. The runner checks approval before preparing and again before broadcasting. Keep the same durable journal across retries. The policy is enforced by SwarmKit applications using this runner.
-
-Use `nearIntentsTransport` with the same runner for mainnet Verifier balances. Supply a buyer intent signer and a relayer transaction signer. The transport preflights each transfer through `simulate_intents` before asking the relayer to sign, then checks the finalized transaction against the approved buyer, seller, asset and amount. Each buyer settles independently. The SDK tests this transport with fixture responses and includes a live read-only Verifier probe.
-
-## Settlement evidence
-
-| Run | Result | Evidence |
-|---|---|---|
-| GPU procurement | 20 confirmed native testnet payments, 0.036 NEAR total | [All receipts](https://mikemoulder.github.io/swarmkit-market/gpu-testnet.json) · [Example transaction](https://testnet.nearblocks.io/txns/BYTgxFHqxjzML5zQWreKyMRyZHW1WCryDJiRVDQHvhLo) |
-| Split fulfillment | Two confirmed native testnet payments, 0.0014 NEAR total | [Round and receipts](https://mikemoulder.github.io/swarmkit-market/split-testnet.json) |
-| NEAR Intents | Signed NEP-413 probe reached the Verifier balance check | [Probe script](scripts/verify-near-intents.mjs) |
-
-The auction coordinator and resource delivery run off-chain. Applications authenticate agents, hold signing keys, and provide durable storage. Transcript replay checks the supplied event history and its allocation. It cannot attest to events missing from that history.
-
-## SwarmKit ecosystem
-
-| Project | What you can do |
-|---|---|
-| [SwarmKit website](https://mikemoulder.github.io/swarmkit-site/) · [source](https://github.com/mikemoulder/swarmkit-site) | Read the quickstart, SDK reference, and agent guide. |
-| [SwarmKit Market](https://mikemoulder.github.io/swarmkit-market/) · [source](https://github.com/mikemoulder/swarmkit-market) | A reference economy with GPU and inference presets, durable simulation, policy inspection, allocation explanations, and settlement recovery. |
-| [llms.txt](https://mikemoulder.github.io/swarmkit-site/llms.txt) | Get a plain-text index and integration guidance. |
-
-The original minimal dashboard remains in this repository: use `npm ci` and `npm run dev`, then open http://localhost:3000. The standalone Market is the primary reference application. Its browser host uses IndexedDB; its local coordinator uses SQLite. Work income, consumption, production costs and seller quote responses are explicit simulation rules, not real economic activity or forecasts.
+- The [NEAR AI Swarms starter prompt](https://github.com/nearai/near-hackathon-prompt-examples/blob/main/tracks/05-swarms.md)
+  describes the group-buying swarm this SDK's reference round implements.
+- [Co-op](https://github.com/AlphaTechini/co-op) is a group-buying application on NEAR;
+  SwarmKit aims to be the reusable layer under applications like it.
+- [AuctionSI](https://github.com/Yashjindal11/auctionsi) explores several auction types for
+  agent marketplaces, and Microsoft's
+  [Magentic Marketplace](https://github.com/microsoft/multi-agent-marketplace) studies
+  buyer and seller agents in simulation. SwarmKit focuses on carrying a decision through to
+  payment on NEAR.
+- [NEAR Intents](https://docs.near-intents.org/) and its Verifier contract provide the
+  intent-based settlement path.
 
 ## License
 
-Choose [MIT](LICENSE-MIT) or [Apache 2.0](LICENSE-APACHE).
+Licensed under either of [Apache License 2.0](LICENSE-APACHE) or [MIT](LICENSE-MIT), at your
+option.
